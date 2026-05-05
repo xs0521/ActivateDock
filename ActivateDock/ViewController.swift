@@ -41,6 +41,15 @@ final class ViewController: NSViewController {
     override var acceptsFirstResponder: Bool { true }
 
     override func keyDown(with event: NSEvent) {
+        if event.modifierFlags.contains(.command),
+           event.charactersIgnoringModifiers?.lowercased() == "q" {
+            NSApp.terminate(nil)
+            return
+        }
+        if event.keyCode == 53 {
+            NSApp.hide(nil)
+            return
+        }
         if event.keyCode == 48 {
             moveSelection(forward: !event.modifierFlags.contains(.shift))
             return
