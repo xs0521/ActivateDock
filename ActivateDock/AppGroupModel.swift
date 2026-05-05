@@ -19,6 +19,43 @@ struct AppGroup {
 
 enum AppGroupBuilder {
     static func build(from apps: [RunningApp]) -> [AppGroup] {
+        let groups: [AppGroup]
+        if let saved = LayoutStore.load() {
+            groups = reconcile(saved: saved, with: apps)
+        } else {
+            groups = defaultGroups(from: apps)
+        }
+        return groups.filter { !$0.items.isEmpty }
+    }
+
+    private static func reconcile(saved: [PersistedGroup], with apps: [RunningApp]) -> [AppGroup] {
+        var byBundle: [String: RunningApp] = [:]
+        for app in apps { byBundle[app.bundleIdentifier] = app }
+
+        var groups: [AppGroup] = []
+        for s in saved {
+            var items: [RunningApp] = []
+            for bid in s.bundleIdentifiers {
+                if let app = byBundle.removeValue(forKey: bid) {
+                    items.append(app)
+                }
+            }
+            groups.append(AppGroup(title: s.title, accentColor: LayoutStore.color(from: s.colorRGBA), items: items))
+        }
+
+        let remaining = Array(byBundle.values).sorted { $0.displayName < $1.displayName }
+        for dg in defaultGroups(from: remaining) where !dg.items.isEmpty {
+            if let idx = groups.firstIndex(where: { $0.title == dg.title }) {
+                groups[idx].items.append(contentsOf: dg.items)
+            } else {
+                let insertAt = groups.firstIndex(where: { $0.title == "其他" }) ?? groups.count
+                groups.insert(dg, at: insertAt)
+            }
+        }
+        return groups
+    }
+
+    private static func defaultGroups(from apps: [RunningApp]) -> [AppGroup] {
         var groups: [AppGroup] = [
             AppGroup(title: "即时通信", accentColor: .systemPurple, items: []),
             AppGroup(title: "编程软件", accentColor: .systemBlue, items: []),
@@ -44,7 +81,7 @@ enum AppGroupBuilder {
             }
         }
 
-        return groups.filter { !$0.items.isEmpty }
+        return groups
     }
 
     private static func matches(_ name: String, _ bundle: String, _ keys: [String]) -> Bool {

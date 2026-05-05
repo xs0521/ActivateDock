@@ -79,6 +79,7 @@ extension ViewController {
               let attrs = collectionView.collectionViewLayout?
                 .layoutAttributesForItem(at: IndexPath(item: activeIndex, section: 0)) else {
             cleanupCardDrag()
+            saveLayout()
             return
         }
 
@@ -89,6 +90,7 @@ extension ViewController {
             overlay.animator().frame = targetFrame
         }, completionHandler: { [weak self] in
             self?.cleanupCardDrag()
+            self?.saveLayout()
         })
     }
 

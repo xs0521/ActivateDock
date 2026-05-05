@@ -22,6 +22,7 @@ extension ViewController {
         groupedApps.insert(newGroup, at: insertAt)
 
         collectionView.reloadData()
+        saveLayout()
         DispatchQueue.main.async { [weak self] in
             self?.fitWindowHeightToContent()
         }

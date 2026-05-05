@@ -127,22 +127,22 @@ extension ViewController {
     func iconDragEnd(mouseInWindow: NSPoint) {
         guard let overlay = iconDragOverlay else {
             cleanupIconDrag()
+            saveLayout()
             return
         }
-
         applyDropHighlight(group: iconDragTargetGroup, active: false)
-
         guard let sourceFrame = sourceButtonFrameInPanel() else {
             cleanupIconDrag()
+            saveLayout()
             return
         }
-
         NSAnimationContext.runAnimationGroup({ ctx in
             ctx.duration = 0.20
             ctx.timingFunction = CAMediaTimingFunction(name: .easeOut)
             overlay.animator().frame = sourceFrame
         }, completionHandler: { [weak self] in
             self?.cleanupIconDrag()
+            self?.saveLayout()
         })
     }
 
