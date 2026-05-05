@@ -46,10 +46,11 @@ extension ViewController {
         overlay.frame.origin = NSPoint(x: startOrigin.x + dx, y: startOrigin.y + dy)
 
         let center = NSPoint(x: overlay.frame.midX, y: overlay.frame.midY)
-        let newTarget = groupIndex(containingPanelPoint: center)
+        var newTarget = groupIndex(containingPanelPoint: center)
 
         if let target = newTarget, target != iconDragSourceGroup {
             performLiveTransfer(toGroup: target, overlayCenterX: center.x)
+            newTarget = groupIndex(containingPanelPoint: center)
         }
 
         if newTarget != iconDragTargetGroup {
@@ -92,7 +93,14 @@ extension ViewController {
         targetCell.attachButton(movingButton, at: insertIndex)
         movingButton.alphaValue = 0
 
-        iconDragSourceGroup = target
+        var newSource = target
+        if groupedApps[sourceGroup].items.isEmpty {
+            if sourceGroup < target { newSource -= 1 }
+            groupedApps.remove(at: sourceGroup)
+            collectionView.deleteItems(at: [IndexPath(item: sourceGroup, section: 0)])
+            DispatchQueue.main.async { [weak self] in self?.fitWindowHeightToContent() }
+        }
+        iconDragSourceGroup = newSource
         iconDragSourceItem = insertIndex
     }
 
@@ -149,8 +157,7 @@ extension ViewController {
     }
 
     private func applyDropHighlight(group: Int?, active: Bool) {
-        guard let group else { return }
-        guard let cell = collectionView.item(at: IndexPath(item: group, section: 0)) as? SectionCollectionItem else { return }
+        guard let group, let cell = collectionView.item(at: IndexPath(item: group, section: 0)) as? SectionCollectionItem else { return }
         cell.setDropHighlight(active)
     }
 
@@ -166,11 +173,11 @@ extension ViewController {
     private func cleanupIconDrag() {
         iconDragOverlay?.removeFromSuperview()
         iconDragOverlay = nil
-
         if let group = iconDragSourceGroup,
            let item = iconDragSourceItem,
            let cell = collectionView.item(at: IndexPath(item: group, section: 0)) as? SectionCollectionItem,
            cell.buttons.indices.contains(item) {
+            cell.buttons[item].clearHoverState()
             cell.buttons[item].alphaValue = 1
         }
 

@@ -11,6 +11,7 @@ final class SectionCollectionItem: NSCollectionViewItem {
 
     private let card = NSView()
     private let accentBar = NSView()
+    private let iconsScrollView = NSScrollView()
     private let iconsStack = NSStackView()
     private(set) var buttons: [AppIconButton] = []
 
@@ -21,6 +22,7 @@ final class SectionCollectionItem: NSCollectionViewItem {
     var onIconDragStart: ((AppIconButton, NSPoint) -> Void)?
     var onIconDragMove: ((NSPoint) -> Void)?
     var onIconDragEnd: ((NSPoint) -> Void)?
+    var onIconPlusTapped: ((AppIconButton) -> Void)?
 
     private var defaultCardBackground: CGColor {
         NSColor.labelColor.withAlphaComponent(0.24).cgColor
@@ -54,10 +56,22 @@ final class SectionCollectionItem: NSCollectionViewItem {
         iconsStack.spacing = 8
         iconsStack.translatesAutoresizingMaskIntoConstraints = false
 
+        iconsScrollView.translatesAutoresizingMaskIntoConstraints = false
+        iconsScrollView.drawsBackground = false
+        iconsScrollView.hasHorizontalScroller = false
+        iconsScrollView.hasVerticalScroller = false
+        iconsScrollView.horizontalScrollElasticity = .allowed
+        iconsScrollView.verticalScrollElasticity = .none
+        iconsScrollView.scrollerStyle = .overlay
+        iconsScrollView.automaticallyAdjustsContentInsets = false
+        iconsScrollView.contentInsets = NSEdgeInsets(top: 0, left: 0, bottom: 0, right: 0)
+        iconsScrollView.documentView = iconsStack
+
         card.addSubview(accentBar)
-        card.addSubview(iconsStack)
+        card.addSubview(iconsScrollView)
         view.addSubview(card)
 
+        let clipView = iconsScrollView.contentView
         NSLayoutConstraint.activate([
             card.topAnchor.constraint(equalTo: view.topAnchor),
             card.leadingAnchor.constraint(equalTo: view.leadingAnchor),
@@ -69,9 +83,15 @@ final class SectionCollectionItem: NSCollectionViewItem {
             accentBar.bottomAnchor.constraint(equalTo: card.bottomAnchor, constant: -14),
             accentBar.widthAnchor.constraint(equalToConstant: 3),
 
-            iconsStack.leadingAnchor.constraint(equalTo: accentBar.trailingAnchor, constant: 12),
-            iconsStack.trailingAnchor.constraint(lessThanOrEqualTo: card.trailingAnchor, constant: -10),
-            iconsStack.centerYAnchor.constraint(equalTo: card.centerYAnchor)
+            iconsScrollView.leadingAnchor.constraint(equalTo: accentBar.trailingAnchor, constant: 12),
+            iconsScrollView.trailingAnchor.constraint(equalTo: card.trailingAnchor, constant: -10),
+            iconsScrollView.topAnchor.constraint(equalTo: card.topAnchor),
+            iconsScrollView.bottomAnchor.constraint(equalTo: card.bottomAnchor),
+
+            iconsStack.topAnchor.constraint(equalTo: clipView.topAnchor),
+            iconsStack.bottomAnchor.constraint(equalTo: clipView.bottomAnchor),
+            iconsStack.leadingAnchor.constraint(equalTo: clipView.leadingAnchor),
+            iconsStack.heightAnchor.constraint(equalTo: clipView.heightAnchor)
         ])
     }
 
@@ -103,6 +123,10 @@ final class SectionCollectionItem: NSCollectionViewItem {
         }
         button.onDragMove = { [weak self] p in self?.onIconDragMove?(p) }
         button.onDragEnd = { [weak self] p in self?.onIconDragEnd?(p) }
+        button.onPlusTapped = { [weak self, weak button] in
+            guard let button = button else { return }
+            self?.onIconPlusTapped?(button)
+        }
     }
 
     func detachButton(at index: Int) -> AppIconButton? {
@@ -121,6 +145,7 @@ final class SectionCollectionItem: NSCollectionViewItem {
 
     func attachButton(_ button: AppIconButton, at index: Int) {
         wireButton(button)
+        button.clearHoverState()
         let safe = max(0, min(index, buttons.count))
         buttons.insert(button, at: safe)
         NSAnimationContext.runAnimationGroup { ctx in

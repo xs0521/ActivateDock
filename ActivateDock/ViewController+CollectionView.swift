@@ -40,6 +40,9 @@ extension ViewController: NSCollectionViewDataSource {
         sectionItem.onIconDragEnd = { [weak self] mouse in
             self?.iconDragEnd(mouseInWindow: mouse)
         }
+        sectionItem.onIconPlusTapped = { [weak self] button in
+            self?.handlePlusTapped(button: button)
+        }
         return sectionItem
     }
 }
