@@ -17,10 +17,14 @@ class AppDelegate: NSObject, NSApplicationDelegate {
     }
 
     func applicationShouldHandleReopen(_ sender: NSApplication, hasVisibleWindows flag: Bool) -> Bool {
-        if !flag {
-            NSApp.windows.first?.makeKeyAndOrderFront(nil)
-        }
+        NSApp.unhide(nil)
+        NSApp.activate(ignoringOtherApps: true)
+        NSApp.windows.first?.makeKeyAndOrderFront(nil)
         return true
+    }
+
+    func applicationDidResignActive(_ notification: Notification) {
+        NSApp.hide(nil)
     }
 
     func applicationWillTerminate(_ aNotification: Notification) {
