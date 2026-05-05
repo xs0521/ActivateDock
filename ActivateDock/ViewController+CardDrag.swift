@@ -110,7 +110,6 @@ extension ViewController {
         cardDragSourceIndex = nil
         cardDragMouseStart = nil
         cardDragOverlayStartOrigin = nil
-        updateSelectionUI()
     }
 
     private func snapshotImage(of view: NSView) -> NSImage? {

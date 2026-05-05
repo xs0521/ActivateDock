@@ -69,7 +69,7 @@ final class SectionCollectionItem: NSCollectionViewItem {
         card.translatesAutoresizingMaskIntoConstraints = false
         card.wantsLayer = true
         card.layer?.cornerRadius = 14
-        card.layer?.backgroundColor = NSColor.labelColor.withAlphaComponent(0.04).cgColor
+        card.layer?.backgroundColor = NSColor.labelColor.withAlphaComponent(0.24).cgColor
 
         accentBar.translatesAutoresizingMaskIntoConstraints = false
         accentBar.wantsLayer = true

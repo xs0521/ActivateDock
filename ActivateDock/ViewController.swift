@@ -15,7 +15,6 @@ final class ViewController: NSViewController {
     let collectionView = NSCollectionView()
 
     var groupedApps: [AppGroup] = []
-    var selectedIndex = 0
 
     var cardDragOverlay: NSImageView?
     var cardDragSourceIndex: Int?
@@ -52,19 +51,17 @@ final class ViewController: NSViewController {
             NSApp.hide(nil)
             return
         }
-        if event.keyCode == 48 {
-            moveSelection(forward: !event.modifierFlags.contains(.shift))
-            return
-        }
-        if event.keyCode == 36 || event.keyCode == 76 {
-            activateSelectedApp()
-            return
-        }
         if event.charactersIgnoringModifiers?.lowercased() == "r" {
             refreshRunningApps()
             return
         }
         super.keyDown(with: event)
+    }
+
+    func handleAppTapped(_ button: AppIconButton) {
+        if button.app.app.activate(options: [.activateAllWindows]) {
+            NSApp.hide(nil)
+        }
     }
 
     override func viewDidLayout() {
@@ -140,8 +137,6 @@ final class ViewController: NSViewController {
             }
         groupedApps = AppGroupBuilder.build(from: apps)
         collectionView.reloadData()
-        selectedIndex = 0
-        updateSelectionUI()
         DispatchQueue.main.async { [weak self] in
             self?.fitWindowHeightToContent()
         }

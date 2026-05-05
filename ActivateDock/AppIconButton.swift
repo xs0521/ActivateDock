@@ -14,7 +14,6 @@ final class AppIconButton: NSButton {
     private let iconView = NSImageView()
     private var trackingArea: NSTrackingArea?
     private var isHovered = false
-    private var isFocused = false
 
     init(app: RunningApp) {
         self.app = app
@@ -24,8 +23,6 @@ final class AppIconButton: NSButton {
         title = ""
         wantsLayer = true
         layer?.cornerRadius = 12
-        layer?.borderWidth = 1
-        layer?.borderColor = NSColor.clear.cgColor
         layer?.backgroundColor = NSColor.clear.cgColor
 
         let icon = app.app.icon?.copy() as? NSImage
@@ -74,32 +71,15 @@ final class AppIconButton: NSButton {
         applyAppearance()
     }
 
-    func setFocused(_ focused: Bool) {
-        guard isFocused != focused else { return }
-        isFocused = focused
-        applyAppearance()
-    }
-
     private func applyAppearance() {
-        let bg: CGColor
-        let border: CGColor
-
-        if isFocused {
-            bg = NSColor.controlAccentColor.withAlphaComponent(0.22).cgColor
-            border = NSColor.controlAccentColor.cgColor
-        } else if isHovered {
-            bg = NSColor.labelColor.withAlphaComponent(0.10).cgColor
-            border = NSColor.clear.cgColor
-        } else {
-            bg = NSColor.clear.cgColor
-            border = NSColor.clear.cgColor
-        }
+        let bg: CGColor = isHovered
+            ? NSColor.labelColor.withAlphaComponent(0.10).cgColor
+            : NSColor.clear.cgColor
 
         CATransaction.begin()
         CATransaction.setAnimationDuration(0.15)
         CATransaction.setAnimationTimingFunction(CAMediaTimingFunction(name: .easeOut))
         layer?.backgroundColor = bg
-        layer?.borderColor = border
         CATransaction.commit()
     }
 }

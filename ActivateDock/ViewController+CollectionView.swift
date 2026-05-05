@@ -30,9 +30,6 @@ extension ViewController: NSCollectionViewDataSource {
         sectionItem.onDragEnd = { [weak self] mouse in
             self?.cardDragEnd(mouseInWindow: mouse)
         }
-        DispatchQueue.main.async { [weak self] in
-            self?.updateSelectionUI()
-        }
         return sectionItem
     }
 }
