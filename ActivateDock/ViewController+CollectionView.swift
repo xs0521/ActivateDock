@@ -20,6 +20,16 @@ extension ViewController: NSCollectionViewDataSource {
         sectionItem.onAppTapped = { [weak self] button in
             self?.handleAppTapped(button)
         }
+        sectionItem.onDragStart = { [weak self, weak sectionItem] mouse in
+            guard let self, let cell = sectionItem else { return }
+            self.cardDragStart(cell: cell, mouseInWindow: mouse)
+        }
+        sectionItem.onDragMove = { [weak self] mouse in
+            self?.cardDragMove(mouseInWindow: mouse)
+        }
+        sectionItem.onDragEnd = { [weak self] mouse in
+            self?.cardDragEnd(mouseInWindow: mouse)
+        }
         DispatchQueue.main.async { [weak self] in
             self?.updateSelectionUI()
         }
@@ -37,79 +47,9 @@ extension ViewController: NSCollectionViewDelegateFlowLayout {
 }
 
 extension ViewController: NSCollectionViewDelegate {
-
     func collectionView(_ collectionView: NSCollectionView,
                         canDragItemsAt indexPaths: Set<IndexPath>,
                         with event: NSEvent) -> Bool {
-        true
-    }
-
-    func collectionView(_ collectionView: NSCollectionView,
-                        pasteboardWriterForItemAt indexPath: IndexPath) -> NSPasteboardWriting? {
-        let item = NSPasteboardItem()
-        item.setString(String(indexPath.item), forType: ViewController.sectionPasteboardType)
-        return item
-    }
-
-    func collectionView(_ collectionView: NSCollectionView,
-                        draggingSession session: NSDraggingSession,
-                        willBeginAt screenPoint: NSPoint,
-                        forItemsAt indexPaths: Set<IndexPath>) {
-        liveDragSourceIndex = indexPaths.first?.item
-        session.animatesToStartingPositionsOnCancelOrFail = false
-        session.draggingFormation = .none
-    }
-
-    func collectionView(_ collectionView: NSCollectionView,
-                        draggingSession session: NSDraggingSession,
-                        endedAt screenPoint: NSPoint,
-                        dragOperation operation: NSDragOperation) {
-        liveDragSourceIndex = nil
-        DispatchQueue.main.async { [weak self] in
-            self?.updateSelectionUI()
-        }
-    }
-
-    func collectionView(_ collectionView: NSCollectionView,
-                        validateDrop draggingInfo: NSDraggingInfo,
-                        proposedIndexPath: AutoreleasingUnsafeMutablePointer<NSIndexPath>,
-                        dropOperation proposedDropOperation: UnsafeMutablePointer<NSCollectionView.DropOperation>) -> NSDragOperation {
-        if proposedDropOperation.pointee == .on {
-            proposedDropOperation.pointee = .before
-        }
-
-        guard let source = liveDragSourceIndex,
-              source >= 0, source < groupedApps.count else { return .move }
-
-        let proposed = (proposedIndexPath.pointee as IndexPath).item
-        var target = proposed
-        if target > source { target -= 1 }
-        target = max(0, min(target, groupedApps.count - 1))
-
-        if target != source {
-            let moved = groupedApps.remove(at: source)
-            groupedApps.insert(moved, at: target)
-            liveDragSourceIndex = target
-
-            NSAnimationContext.runAnimationGroup { context in
-                context.duration = 0.22
-                context.timingFunction = CAMediaTimingFunction(name: .easeOut)
-                collectionView.animator().moveItem(
-                    at: IndexPath(item: source, section: 0),
-                    to: IndexPath(item: target, section: 0)
-                )
-            }
-        }
-
-        proposedIndexPath.pointee = NSIndexPath(forItem: liveDragSourceIndex ?? source, inSection: 0)
-        return .move
-    }
-
-    func collectionView(_ collectionView: NSCollectionView,
-                        acceptDrop draggingInfo: NSDraggingInfo,
-                        indexPath: IndexPath,
-                        dropOperation: NSCollectionView.DropOperation) -> Bool {
-        liveDragSourceIndex = nil
-        return true
+        false
     }
 }

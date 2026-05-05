@@ -24,8 +24,8 @@ extension ViewController {
         window.setFrameAutosaveName("")
         window.minSize = NSSize(width: 640, height: 320)
 
-        DispatchQueue.main.async { [weak window] in
-            guard let window else { return }
+        DispatchQueue.main.async { [weak self, weak window] in
+            guard let self, let window else { return }
             let screen = NSScreen.screens.first ?? NSScreen.main
             let visible = screen?.visibleFrame ?? NSRect(x: 0, y: 0, width: 1440, height: 900)
             let width = min(max(visible.width * 0.55, 960), 1600)
@@ -38,6 +38,7 @@ extension ViewController {
             window.setFrame(NSRect(origin: origin, size: preferred), display: true, animate: false)
             window.makeKeyAndOrderFront(nil)
             NSApp.activate(ignoringOtherApps: true)
+            self.fitWindowHeightToContent()
         }
     }
 

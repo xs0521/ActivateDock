@@ -9,16 +9,18 @@ import Cocoa
 
 final class ViewController: NSViewController {
 
-    static let sectionPasteboardType = NSPasteboard.PasteboardType("com.activatedock.section")
-
     private let panelContainer = NSGlassEffectView()
-    private let panelContent = NSView()
+    let panelContent = NSView()
     private let scrollView = NSScrollView()
     let collectionView = NSCollectionView()
 
     var groupedApps: [AppGroup] = []
     var selectedIndex = 0
-    var liveDragSourceIndex: Int?
+
+    var cardDragOverlay: NSImageView?
+    var cardDragSourceIndex: Int?
+    var cardDragMouseStart: NSPoint?
+    var cardDragOverlayStartOrigin: NSPoint?
 
     override func loadView() {
         view = NSView()
@@ -116,10 +118,6 @@ final class ViewController: NSViewController {
         collectionView.allowsMultipleSelection = false
         collectionView.backgroundColors = [.clear]
         collectionView.register(SectionCollectionItem.self, forItemWithIdentifier: SectionCollectionItem.identifier)
-
-        collectionView.registerForDraggedTypes([Self.sectionPasteboardType])
-        collectionView.setDraggingSourceOperationMask(.move, forLocal: true)
-        collectionView.setDraggingSourceOperationMask([], forLocal: false)
 
         scrollView.documentView = collectionView
     }
