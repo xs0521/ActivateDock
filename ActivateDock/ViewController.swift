@@ -38,6 +38,25 @@ final class ViewController: NSViewController {
         setupPanel()
         setupCollectionView()
         refreshRunningApps()
+        NotificationCenter.default.addObserver(
+            self,
+            selector: #selector(handleWillBecomeActive(_:)),
+            name: NSApplication.willBecomeActiveNotification,
+            object: nil
+        )
+        let ws = NSWorkspace.shared.notificationCenter
+        ws.addObserver(self, selector: #selector(handleWorkspaceChange(_:)),
+                       name: NSWorkspace.didLaunchApplicationNotification, object: nil)
+        ws.addObserver(self, selector: #selector(handleWorkspaceChange(_:)),
+                       name: NSWorkspace.didTerminateApplicationNotification, object: nil)
+    }
+
+    @objc private func handleWillBecomeActive(_ note: Notification) {
+        refreshRunningApps()
+    }
+
+    @objc private func handleWorkspaceChange(_ note: Notification) {
+        refreshRunningApps()
     }
 
     override func viewDidAppear() {
@@ -142,11 +161,23 @@ final class ViewController: NSViewController {
                     bundleIdentifier: $0.bundleIdentifier ?? ""
                 )
             }
-        groupedApps = AppGroupBuilder.build(from: apps)
+        let next = AppGroupBuilder.build(from: apps)
+        if sameStructure(groupedApps, next) { return }
+        groupedApps = next
         collectionView.reloadData()
         DispatchQueue.main.async { [weak self] in
             self?.fitWindowHeightToContent()
         }
     }
 
+    private func sameStructure(_ lhs: [AppGroup], _ rhs: [AppGroup]) -> Bool {
+        guard lhs.count == rhs.count else { return false }
+        for (a, b) in zip(lhs, rhs) {
+            if a.title != b.title || a.items.count != b.items.count { return false }
+            for (x, y) in zip(a.items, b.items) where x.bundleIdentifier != y.bundleIdentifier {
+                return false
+            }
+        }
+        return true
+    }
 }

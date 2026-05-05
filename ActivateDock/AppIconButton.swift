@@ -74,7 +74,7 @@ final class AppIconButton: NSButton {
         plusBadge.imagePosition = .imageOnly
         plusBadge.contentTintColor = NSColor.white
         let cfg = NSImage.SymbolConfiguration(pointSize: 14, weight: .regular)
-        plusBadge.image = NSImage(systemSymbolName: "plus", accessibilityDescription: "新建分类")?
+        plusBadge.image = NSImage(systemSymbolName: "folder.fill", accessibilityDescription: "新建分类")?
             .withSymbolConfiguration(cfg)
         plusBadge.wantsLayer = true
         plusBadge.layer?.isOpaque = false
