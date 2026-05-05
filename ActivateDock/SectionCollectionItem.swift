@@ -5,42 +5,6 @@
 
 import Cocoa
 
-final class DraggableSectionView: NSView {
-    var onDragStart: ((NSPoint) -> Void)?
-    var onDragMove: ((NSPoint) -> Void)?
-    var onDragEnd: ((NSPoint) -> Void)?
-
-    private var pressStart: NSPoint?
-    private var isDragging = false
-    private static let threshold: CGFloat = 4
-
-    override func mouseDown(with event: NSEvent) {
-        pressStart = event.locationInWindow
-        isDragging = false
-    }
-
-    override func mouseDragged(with event: NSEvent) {
-        guard let start = pressStart else { return }
-        let p = event.locationInWindow
-        if !isDragging {
-            if abs(p.y - start.y) > Self.threshold || abs(p.x - start.x) > Self.threshold {
-                isDragging = true
-                onDragStart?(p)
-            }
-            return
-        }
-        onDragMove?(p)
-    }
-
-    override func mouseUp(with event: NSEvent) {
-        if isDragging {
-            onDragEnd?(event.locationInWindow)
-        }
-        pressStart = nil
-        isDragging = false
-    }
-}
-
 final class SectionCollectionItem: NSCollectionViewItem {
     static let identifier = NSUserInterfaceItemIdentifier("SectionCollectionItem")
     static let itemHeight: CGFloat = 92
@@ -122,19 +86,68 @@ final class SectionCollectionItem: NSCollectionViewItem {
 
         for app in group.items {
             let button = AppIconButton(app: app)
-            button.target = self
-            button.action = #selector(handleButtonTap(_:))
-            button.onDragStart = { [weak self, weak button] p in
-                guard let button = button else { return }
-                self?.onIconDragStart?(button, p)
-            }
-            button.onDragMove = { [weak self] p in self?.onIconDragMove?(p) }
-            button.onDragEnd = { [weak self] p in self?.onIconDragEnd?(p) }
+            wireButton(button)
             buttons.append(button)
             iconsStack.addArrangedSubview(button)
         }
 
         setDropHighlight(false)
+    }
+
+    private func wireButton(_ button: AppIconButton) {
+        button.target = self
+        button.action = #selector(handleButtonTap(_:))
+        button.onDragStart = { [weak self, weak button] p in
+            guard let button = button else { return }
+            self?.onIconDragStart?(button, p)
+        }
+        button.onDragMove = { [weak self] p in self?.onIconDragMove?(p) }
+        button.onDragEnd = { [weak self] p in self?.onIconDragEnd?(p) }
+    }
+
+    func detachButton(at index: Int) -> AppIconButton? {
+        guard buttons.indices.contains(index) else { return nil }
+        let button = buttons.remove(at: index)
+        NSAnimationContext.runAnimationGroup { ctx in
+            ctx.duration = 0.22
+            ctx.timingFunction = CAMediaTimingFunction(name: .easeOut)
+            ctx.allowsImplicitAnimation = true
+            iconsStack.removeArrangedSubview(button)
+            button.removeFromSuperview()
+            iconsStack.layoutSubtreeIfNeeded()
+        }
+        return button
+    }
+
+    func attachButton(_ button: AppIconButton, at index: Int) {
+        wireButton(button)
+        let safe = max(0, min(index, buttons.count))
+        buttons.insert(button, at: safe)
+        NSAnimationContext.runAnimationGroup { ctx in
+            ctx.duration = 0.22
+            ctx.timingFunction = CAMediaTimingFunction(name: .easeOut)
+            ctx.allowsImplicitAnimation = true
+            iconsStack.insertArrangedSubview(button, at: safe)
+            iconsStack.layoutSubtreeIfNeeded()
+        }
+    }
+
+    func moveButton(from old: Int, to new: Int) {
+        guard buttons.indices.contains(old) else { return }
+        let clamped = max(0, min(new, buttons.count - 1))
+        guard old != clamped else { return }
+
+        let button = buttons.remove(at: old)
+        buttons.insert(button, at: clamped)
+
+        NSAnimationContext.runAnimationGroup { ctx in
+            ctx.duration = 0.22
+            ctx.timingFunction = CAMediaTimingFunction(name: .easeOut)
+            ctx.allowsImplicitAnimation = true
+            iconsStack.removeArrangedSubview(button)
+            iconsStack.insertArrangedSubview(button, at: clamped)
+            iconsStack.layoutSubtreeIfNeeded()
+        }
     }
 
     func setDropHighlight(_ active: Bool) {

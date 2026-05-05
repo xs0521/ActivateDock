@@ -48,37 +48,81 @@ extension ViewController {
         let center = NSPoint(x: overlay.frame.midX, y: overlay.frame.midY)
         let newTarget = groupIndex(containingPanelPoint: center)
 
+        if let target = newTarget, target != iconDragSourceGroup {
+            performLiveTransfer(toGroup: target, overlayCenterX: center.x)
+        }
+
         if newTarget != iconDragTargetGroup {
             applyDropHighlight(group: iconDragTargetGroup, active: false)
             iconDragTargetGroup = newTarget
-            if let target = newTarget, target != iconDragSourceGroup {
+            if let target = newTarget, target == iconDragSourceGroup {
                 applyDropHighlight(group: target, active: true)
             }
         }
+
+        if let target = newTarget, target == iconDragSourceGroup {
+            performLiveReorder(in: target, overlayCenterX: center.x)
+        }
+    }
+
+    private func performLiveTransfer(toGroup target: Int, overlayCenterX: CGFloat) {
+        guard let sourceGroup = iconDragSourceGroup,
+              let sourceItem = iconDragSourceItem,
+              sourceGroup != target,
+              groupedApps.indices.contains(sourceGroup),
+              groupedApps.indices.contains(target),
+              groupedApps[sourceGroup].items.indices.contains(sourceItem),
+              let sourceCell = collectionView.item(at: IndexPath(item: sourceGroup, section: 0)) as? SectionCollectionItem,
+              let targetCell = collectionView.item(at: IndexPath(item: target, section: 0)) as? SectionCollectionItem else { return }
+
+        var insertIndex = 0
+        for b in targetCell.buttons {
+            let midXInPanel = panelContent.convert(NSPoint(x: b.bounds.midX, y: 0), from: b).x
+            if midXInPanel < overlayCenterX { insertIndex += 1 }
+        }
+
+        let app = groupedApps[sourceGroup].items.remove(at: sourceItem)
+        groupedApps[target].items.insert(app, at: insertIndex)
+
+        guard let movingButton = sourceCell.detachButton(at: sourceItem) else {
+            groupedApps[target].items.remove(at: insertIndex)
+            groupedApps[sourceGroup].items.insert(app, at: sourceItem)
+            return
+        }
+        targetCell.attachButton(movingButton, at: insertIndex)
+        movingButton.alphaValue = 0
+
+        iconDragSourceGroup = target
+        iconDragSourceItem = insertIndex
+    }
+
+    private func performLiveReorder(in groupIndex: Int, overlayCenterX: CGFloat) {
+        guard let sourceItem = iconDragSourceItem,
+              groupedApps.indices.contains(groupIndex),
+              let cell = collectionView.item(at: IndexPath(item: groupIndex, section: 0)) as? SectionCollectionItem,
+              cell.buttons.indices.contains(sourceItem) else { return }
+
+        var newIndex = 0
+        for (i, b) in cell.buttons.enumerated() where i != sourceItem {
+            let midXInPanel = panelContent.convert(NSPoint(x: b.bounds.midX, y: 0), from: b).x
+            if midXInPanel < overlayCenterX { newIndex += 1 }
+        }
+
+        guard newIndex != sourceItem else { return }
+
+        let app = groupedApps[groupIndex].items.remove(at: sourceItem)
+        groupedApps[groupIndex].items.insert(app, at: newIndex)
+        cell.moveButton(from: sourceItem, to: newIndex)
+        iconDragSourceItem = newIndex
     }
 
     func iconDragEnd(mouseInWindow: NSPoint) {
-        guard let overlay = iconDragOverlay,
-              let sourceGroup = iconDragSourceGroup,
-              let sourceItem = iconDragSourceItem else {
+        guard let overlay = iconDragOverlay else {
             cleanupIconDrag()
             return
         }
 
         applyDropHighlight(group: iconDragTargetGroup, active: false)
-
-        let canDrop = iconDragTargetGroup != nil
-            && iconDragTargetGroup != sourceGroup
-            && groupedApps.indices.contains(sourceGroup)
-            && groupedApps[sourceGroup].items.indices.contains(sourceItem)
-
-        if canDrop, let target = iconDragTargetGroup, groupedApps.indices.contains(target) {
-            let app = groupedApps[sourceGroup].items.remove(at: sourceItem)
-            groupedApps[target].items.append(app)
-            cleanupIconDrag()
-            collectionView.reloadData()
-            return
-        }
 
         guard let sourceFrame = sourceButtonFrameInPanel() else {
             cleanupIconDrag()
