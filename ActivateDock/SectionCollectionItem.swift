@@ -54,6 +54,16 @@ final class SectionCollectionItem: NSCollectionViewItem {
     var onDragStart: ((NSPoint) -> Void)?
     var onDragMove: ((NSPoint) -> Void)?
     var onDragEnd: ((NSPoint) -> Void)?
+    var onIconDragStart: ((AppIconButton, NSPoint) -> Void)?
+    var onIconDragMove: ((NSPoint) -> Void)?
+    var onIconDragEnd: ((NSPoint) -> Void)?
+
+    private var defaultCardBackground: CGColor {
+        NSColor.labelColor.withAlphaComponent(0.24).cgColor
+    }
+    private var highlightedCardBackground: CGColor {
+        NSColor.labelColor.withAlphaComponent(0.42).cgColor
+    }
 
     override func loadView() {
         let v = DraggableSectionView()
@@ -114,9 +124,25 @@ final class SectionCollectionItem: NSCollectionViewItem {
             let button = AppIconButton(app: app)
             button.target = self
             button.action = #selector(handleButtonTap(_:))
+            button.onDragStart = { [weak self, weak button] p in
+                guard let button = button else { return }
+                self?.onIconDragStart?(button, p)
+            }
+            button.onDragMove = { [weak self] p in self?.onIconDragMove?(p) }
+            button.onDragEnd = { [weak self] p in self?.onIconDragEnd?(p) }
             buttons.append(button)
             iconsStack.addArrangedSubview(button)
         }
+
+        setDropHighlight(false)
+    }
+
+    func setDropHighlight(_ active: Bool) {
+        CATransaction.begin()
+        CATransaction.setAnimationDuration(0.18)
+        CATransaction.setAnimationTimingFunction(CAMediaTimingFunction(name: .easeOut))
+        card.layer?.backgroundColor = active ? highlightedCardBackground : defaultCardBackground
+        CATransaction.commit()
     }
 
     @objc private func handleButtonTap(_ sender: AppIconButton) {

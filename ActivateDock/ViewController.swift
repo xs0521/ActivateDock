@@ -21,6 +21,13 @@ final class ViewController: NSViewController {
     var cardDragMouseStart: NSPoint?
     var cardDragOverlayStartOrigin: NSPoint?
 
+    var iconDragOverlay: NSImageView?
+    var iconDragSourceGroup: Int?
+    var iconDragSourceItem: Int?
+    var iconDragTargetGroup: Int?
+    var iconDragMouseStart: NSPoint?
+    var iconDragOverlayStartOrigin: NSPoint?
+
     override func loadView() {
         view = NSView()
         view.wantsLayer = true

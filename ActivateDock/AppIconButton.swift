@@ -15,6 +15,12 @@ final class AppIconButton: NSButton {
     private var trackingArea: NSTrackingArea?
     private var isHovered = false
 
+    var onDragStart: ((NSPoint) -> Void)?
+    var onDragMove: ((NSPoint) -> Void)?
+    var onDragEnd: ((NSPoint) -> Void)?
+
+    private static let dragThreshold: CGFloat = 4
+
     init(app: RunningApp) {
         self.app = app
         super.init(frame: .zero)
@@ -81,5 +87,36 @@ final class AppIconButton: NSButton {
         CATransaction.setAnimationTimingFunction(CAMediaTimingFunction(name: .easeOut))
         layer?.backgroundColor = bg
         CATransaction.commit()
+    }
+
+    override func mouseDown(with event: NSEvent) {
+        let start = event.locationInWindow
+        var dragging = false
+        guard let win = window else { return }
+
+        while true {
+            guard let next = win.nextEvent(matching: [.leftMouseUp, .leftMouseDragged]) else { return }
+            let p = next.locationInWindow
+            switch next.type {
+            case .leftMouseDragged:
+                if !dragging {
+                    if abs(p.x - start.x) > Self.dragThreshold || abs(p.y - start.y) > Self.dragThreshold {
+                        dragging = true
+                        onDragStart?(p)
+                    }
+                } else {
+                    onDragMove?(p)
+                }
+            case .leftMouseUp:
+                if dragging {
+                    onDragEnd?(p)
+                } else if let action = action, let target = target {
+                    NSApp.sendAction(action, to: target, from: self)
+                }
+                return
+            default:
+                break
+            }
+        }
     }
 }

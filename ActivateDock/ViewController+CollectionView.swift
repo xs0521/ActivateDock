@@ -30,6 +30,16 @@ extension ViewController: NSCollectionViewDataSource {
         sectionItem.onDragEnd = { [weak self] mouse in
             self?.cardDragEnd(mouseInWindow: mouse)
         }
+        sectionItem.onIconDragStart = { [weak self, weak sectionItem] button, mouse in
+            guard let self, let cell = sectionItem else { return }
+            self.iconDragStart(cell: cell, button: button, mouseInWindow: mouse)
+        }
+        sectionItem.onIconDragMove = { [weak self] mouse in
+            self?.iconDragMove(mouseInWindow: mouse)
+        }
+        sectionItem.onIconDragEnd = { [weak self] mouse in
+            self?.iconDragEnd(mouseInWindow: mouse)
+        }
         return sectionItem
     }
 }
