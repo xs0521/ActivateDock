@@ -1,0 +1,32 @@
+//
+//  ViewController+SearchResults.swift
+//  ActivateDock
+//
+
+import Cocoa
+
+extension ViewController: NSTableViewDataSource, NSTableViewDelegate {
+    func numberOfRows(in tableView: NSTableView) -> Int { searchResults.count }
+
+    func tableView(_ tableView: NSTableView, viewFor tableColumn: NSTableColumn?, row: Int) -> NSView? {
+        let cell: SearchResultCell
+        if let reused = tableView.makeView(withIdentifier: SearchResultCell.reuseIdentifier, owner: self) as? SearchResultCell {
+            cell = reused
+        } else {
+            cell = SearchResultCell(frame: .zero)
+            cell.identifier = SearchResultCell.reuseIdentifier
+        }
+        if searchResults.indices.contains(row) { cell.configure(with: searchResults[row]) }
+        cell.setSelected(tableView.selectedRow == row)
+        return cell
+    }
+
+    func tableViewSelectionDidChange(_ notification: Notification) {
+        let visible = searchResultsTable.rows(in: searchResultsTable.visibleRect)
+        let selected = searchResultsTable.selectedRow
+        for row in visible.location..<NSMaxRange(visible) {
+            guard let cell = searchResultsTable.view(atColumn: 0, row: row, makeIfNecessary: false) as? SearchResultCell else { continue }
+            cell.setSelected(row == selected)
+        }
+    }
+}

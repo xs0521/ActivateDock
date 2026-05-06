@@ -5,7 +5,7 @@
 
 import Cocoa
 
-extension ViewController: NSSearchFieldDelegate, NSTableViewDataSource, NSTableViewDelegate {
+extension ViewController: NSSearchFieldDelegate {
 
     func setupSearch() {
         searchField.placeholderString = "search"
@@ -45,6 +45,7 @@ extension ViewController: NSSearchFieldDelegate, NSTableViewDataSource, NSTableV
         searchBackground.wantsLayer = true
         searchBackground.layer?.cornerRadius = 12
         searchBackground.layer?.masksToBounds = true
+        searchBackground.alphaValue = 0.75
         searchBackground.isHidden = true
 
         searchScrollView.drawsBackground = false
@@ -52,6 +53,10 @@ extension ViewController: NSSearchFieldDelegate, NSTableViewDataSource, NSTableV
         searchScrollView.hasHorizontalScroller = false
         searchScrollView.automaticallyAdjustsContentInsets = false
         searchScrollView.scrollerStyle = .overlay
+        searchScrollView.wantsLayer = true
+        searchScrollView.layer?.cornerRadius = 12
+        searchScrollView.layer?.masksToBounds = true
+        searchScrollView.isHidden = true
 
         let column = NSTableColumn(identifier: NSUserInterfaceItemIdentifier("name"))
         column.resizingMask = [.autoresizingMask]
@@ -64,6 +69,7 @@ extension ViewController: NSSearchFieldDelegate, NSTableViewDataSource, NSTableV
         searchResultsTable.rowHeight = 44
         searchResultsTable.allowsEmptySelection = false
         searchResultsTable.allowsMultipleSelection = false
+        searchResultsTable.selectionHighlightStyle = .none
         searchResultsTable.dataSource = self
         searchResultsTable.delegate = self
         searchResultsTable.target = self
@@ -97,11 +103,15 @@ extension ViewController: NSSearchFieldDelegate, NSTableViewDataSource, NSTableV
             searchResults = []
             searchResultsTable.reloadData()
             searchBackground.isHidden = true
+            searchScrollView.isHidden = true
+            scrollView.isHidden = false
             return
         }
         searchResults = InstalledAppsCatalog.search(q, in: installedApps)
         searchResultsTable.reloadData()
         searchBackground.isHidden = false
+        searchScrollView.isHidden = false
+        scrollView.isHidden = true
         if !searchResults.isEmpty {
             searchResultsTable.selectRowIndexes([0], byExtendingSelection: false)
             searchResultsTable.scrollRowToVisible(0)
@@ -180,17 +190,4 @@ extension ViewController: NSSearchFieldDelegate, NSTableViewDataSource, NSTableV
         view.window?.orderOut(nil)
     }
 
-    func numberOfRows(in tableView: NSTableView) -> Int { searchResults.count }
-
-    func tableView(_ tableView: NSTableView, viewFor tableColumn: NSTableColumn?, row: Int) -> NSView? {
-        let cell: SearchResultCell
-        if let reused = tableView.makeView(withIdentifier: SearchResultCell.reuseIdentifier, owner: self) as? SearchResultCell {
-            cell = reused
-        } else {
-            cell = SearchResultCell(frame: .zero)
-            cell.identifier = SearchResultCell.reuseIdentifier
-        }
-        if searchResults.indices.contains(row) { cell.configure(with: searchResults[row]) }
-        return cell
-    }
 }

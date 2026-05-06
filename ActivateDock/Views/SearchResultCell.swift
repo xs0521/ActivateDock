@@ -8,6 +8,7 @@ import Cocoa
 final class SearchResultCell: NSView {
     static let reuseIdentifier = NSUserInterfaceItemIdentifier("SearchResultCell")
 
+    private let accentBar = NSView()
     private let iconView = NSImageView()
     private let titleLabel = NSTextField(labelWithString: "")
 
@@ -20,6 +21,14 @@ final class SearchResultCell: NSView {
     private func setup() {
         wantsLayer = true
         layer?.backgroundColor = NSColor.clear.cgColor
+
+        accentBar.translatesAutoresizingMaskIntoConstraints = false
+        accentBar.wantsLayer = true
+        accentBar.layer?.cornerRadius = 1.5
+        accentBar.layer?.backgroundColor = NSColor.controlAccentColor.cgColor
+        accentBar.isHidden = true
+        addSubview(accentBar)
+
         iconView.translatesAutoresizingMaskIntoConstraints = false
         iconView.imageScaling = .scaleProportionallyUpOrDown
         addSubview(iconView)
@@ -33,7 +42,12 @@ final class SearchResultCell: NSView {
         addSubview(titleLabel)
 
         NSLayoutConstraint.activate([
-            iconView.leadingAnchor.constraint(equalTo: leadingAnchor, constant: 12),
+            accentBar.leadingAnchor.constraint(equalTo: leadingAnchor, constant: 10),
+            accentBar.centerYAnchor.constraint(equalTo: centerYAnchor),
+            accentBar.widthAnchor.constraint(equalToConstant: 4),
+            accentBar.heightAnchor.constraint(equalToConstant: 18),
+
+            iconView.leadingAnchor.constraint(equalTo: leadingAnchor, constant: 20),
             iconView.centerYAnchor.constraint(equalTo: centerYAnchor),
             iconView.widthAnchor.constraint(equalToConstant: 32),
             iconView.heightAnchor.constraint(equalToConstant: 32),
@@ -47,5 +61,9 @@ final class SearchResultCell: NSView {
     func configure(with app: InstalledApp) {
         iconView.image = app.icon
         titleLabel.stringValue = app.displayName
+    }
+
+    func setSelected(_ selected: Bool) {
+        accentBar.isHidden = !selected
     }
 }

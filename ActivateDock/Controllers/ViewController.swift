@@ -83,7 +83,23 @@ final class ViewController: NSViewController {
 
     func handleAppTapped(_ button: AppIconButton) {
         if AppActivator.activate(button.app.app) {
+            bringSelectedAppToFront(button.app)
             view.window?.orderOut(nil)
+        }
+    }
+
+    private func bringSelectedAppToFront(_ app: RunningApp) {
+        let target = app.app
+        for g in groupedApps.indices {
+            guard let i = groupedApps[g].items.firstIndex(where: { $0.app == target }) else { continue }
+            if i == 0 { return }
+            let item = groupedApps[g].items.remove(at: i)
+            groupedApps[g].items.insert(item, at: 0)
+            if let cell = collectionView.item(at: IndexPath(item: g, section: 0)) as? SectionCollectionItem {
+                cell.moveButton(from: i, to: 0)
+            }
+            saveLayout()
+            return
         }
     }
 

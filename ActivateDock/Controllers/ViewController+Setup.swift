@@ -29,7 +29,7 @@ extension ViewController {
         searchFieldBox.addSubview(searchClearButton)
         panelContent.addSubview(scrollView)
         panelContent.addSubview(searchBackground)
-        searchBackground.addSubview(searchScrollView)
+        panelContent.addSubview(searchScrollView)
         panelContainer.contentView = panelContent
         view.addSubview(panelContainer)
 
