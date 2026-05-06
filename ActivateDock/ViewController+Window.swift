@@ -47,7 +47,8 @@ extension ViewController {
 
         let cardH = SectionCollectionItem.itemHeight
         let spacing: CGFloat = 12
-        let verticalPadding: CGFloat = 32 * 2
+        let searchFieldArea: CGFloat = 24 + 64 + 16
+        let verticalPadding: CGFloat = searchFieldArea + 28
         let n = CGFloat(groupedApps.count)
         let contentH = n * cardH + max(n - 1, 0) * spacing
         let needed = contentH + verticalPadding

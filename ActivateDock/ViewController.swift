@@ -14,7 +14,15 @@ final class ViewController: NSViewController {
     private let scrollView = NSScrollView()
     let collectionView = NSCollectionView()
 
+    let searchField = NSSearchField()
+    let searchFieldBox = NSVisualEffectView()
+    let searchBackground = NSVisualEffectView()
+    let searchScrollView = NSScrollView()
+    let searchResultsTable = NSTableView()
+
     var groupedApps: [AppGroup] = []
+    var installedApps: [InstalledApp] = []
+    var searchResults: [InstalledApp] = []
 
     var cardDragOverlay: NSImageView?
     var cardDragSourceIndex: Int?
@@ -37,6 +45,8 @@ final class ViewController: NSViewController {
         super.viewDidLoad()
         setupPanel()
         setupCollectionView()
+        setupSearch()
+        loadInstalledApps()
         refreshRunningApps()
         NotificationCenter.default.addObserver(
             self,
@@ -49,10 +59,14 @@ final class ViewController: NSViewController {
                        name: NSWorkspace.didLaunchApplicationNotification, object: nil)
         ws.addObserver(self, selector: #selector(handleWorkspaceChange(_:)),
                        name: NSWorkspace.didTerminateApplicationNotification, object: nil)
+        installCmdQMonitor()
     }
 
     @objc private func handleWillBecomeActive(_ note: Notification) {
         refreshRunningApps()
+        searchField.stringValue = ""
+        updateForSearchText("")
+        view.window?.makeFirstResponder(searchField)
     }
 
     @objc private func handleWorkspaceChange(_ note: Notification) {
@@ -62,31 +76,12 @@ final class ViewController: NSViewController {
     override func viewDidAppear() {
         super.viewDidAppear()
         configureWindowChrome()
-        view.window?.makeFirstResponder(self)
-    }
-
-    override var acceptsFirstResponder: Bool { true }
-
-    override func keyDown(with event: NSEvent) {
-        if event.modifierFlags.contains(.command),
-           event.charactersIgnoringModifiers?.lowercased() == "q" {
-            NSApp.terminate(nil)
-            return
-        }
-        if event.keyCode == 53 {
-            NSApp.hide(nil)
-            return
-        }
-        if event.charactersIgnoringModifiers?.lowercased() == "r" {
-            refreshRunningApps()
-            return
-        }
-        super.keyDown(with: event)
+        view.window?.makeFirstResponder(searchField)
     }
 
     func handleAppTapped(_ button: AppIconButton) {
         if button.app.app.activate(options: [.activateAllWindows]) {
-            NSApp.hide(nil)
+            view.window?.orderOut(nil)
         }
     }
 
@@ -108,8 +103,15 @@ final class ViewController: NSViewController {
         scrollView.hasHorizontalScroller = false
         scrollView.automaticallyAdjustsContentInsets = false
         scrollView.scrollerStyle = .overlay
-
+        searchField.translatesAutoresizingMaskIntoConstraints = false
+        searchFieldBox.translatesAutoresizingMaskIntoConstraints = false
+        searchBackground.translatesAutoresizingMaskIntoConstraints = false
+        searchScrollView.translatesAutoresizingMaskIntoConstraints = false
+        panelContent.addSubview(searchFieldBox)
+        searchFieldBox.addSubview(searchField)
         panelContent.addSubview(scrollView)
+        panelContent.addSubview(searchBackground)
+        searchBackground.addSubview(searchScrollView)
         panelContainer.contentView = panelContent
         view.addSubview(panelContainer)
 
@@ -118,11 +120,25 @@ final class ViewController: NSViewController {
             panelContainer.trailingAnchor.constraint(equalTo: view.trailingAnchor),
             panelContainer.topAnchor.constraint(equalTo: view.topAnchor),
             panelContainer.bottomAnchor.constraint(equalTo: view.bottomAnchor),
-
+            searchFieldBox.leadingAnchor.constraint(equalTo: panelContent.leadingAnchor, constant: 28),
+            searchFieldBox.trailingAnchor.constraint(equalTo: panelContent.trailingAnchor, constant: -28),
+            searchFieldBox.topAnchor.constraint(equalTo: panelContent.topAnchor, constant: 24),
+            searchFieldBox.heightAnchor.constraint(equalToConstant: 64),
+            searchField.leadingAnchor.constraint(equalTo: searchFieldBox.leadingAnchor, constant: 14),
+            searchField.trailingAnchor.constraint(equalTo: searchFieldBox.trailingAnchor, constant: -14),
+            searchField.centerYAnchor.constraint(equalTo: searchFieldBox.centerYAnchor),
             scrollView.leadingAnchor.constraint(equalTo: panelContent.leadingAnchor, constant: 28),
             scrollView.trailingAnchor.constraint(equalTo: panelContent.trailingAnchor, constant: -28),
-            scrollView.topAnchor.constraint(equalTo: panelContent.topAnchor, constant: 32),
-            scrollView.bottomAnchor.constraint(equalTo: panelContent.bottomAnchor, constant: -32)
+            scrollView.topAnchor.constraint(equalTo: searchFieldBox.bottomAnchor, constant: 16),
+            scrollView.bottomAnchor.constraint(equalTo: panelContent.bottomAnchor, constant: -28),
+            searchBackground.leadingAnchor.constraint(equalTo: scrollView.leadingAnchor),
+            searchBackground.trailingAnchor.constraint(equalTo: scrollView.trailingAnchor),
+            searchBackground.topAnchor.constraint(equalTo: scrollView.topAnchor),
+            searchBackground.bottomAnchor.constraint(equalTo: scrollView.bottomAnchor),
+            searchScrollView.leadingAnchor.constraint(equalTo: searchBackground.leadingAnchor),
+            searchScrollView.trailingAnchor.constraint(equalTo: searchBackground.trailingAnchor),
+            searchScrollView.topAnchor.constraint(equalTo: searchBackground.topAnchor),
+            searchScrollView.bottomAnchor.constraint(equalTo: searchBackground.bottomAnchor)
         ])
     }
 
