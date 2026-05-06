@@ -16,6 +16,7 @@ final class ViewController: NSViewController {
 
     let searchField = NSSearchField()
     let searchFieldBox = NSVisualEffectView()
+    let searchClearButton = NSButton()
     let searchBackground = NSVisualEffectView()
     let searchScrollView = NSScrollView()
     let searchResultsTable = NSTableView()
@@ -106,10 +107,12 @@ final class ViewController: NSViewController {
         scrollView.scrollerStyle = .overlay
         searchField.translatesAutoresizingMaskIntoConstraints = false
         searchFieldBox.translatesAutoresizingMaskIntoConstraints = false
+        searchClearButton.translatesAutoresizingMaskIntoConstraints = false
         searchBackground.translatesAutoresizingMaskIntoConstraints = false
         searchScrollView.translatesAutoresizingMaskIntoConstraints = false
         panelContent.addSubview(searchFieldBox)
         searchFieldBox.addSubview(searchField)
+        searchFieldBox.addSubview(searchClearButton)
         panelContent.addSubview(scrollView)
         panelContent.addSubview(searchBackground)
         searchBackground.addSubview(searchScrollView)
@@ -126,8 +129,12 @@ final class ViewController: NSViewController {
             searchFieldBox.topAnchor.constraint(equalTo: panelContent.topAnchor, constant: 24),
             searchFieldBox.heightAnchor.constraint(equalToConstant: 64),
             searchField.leadingAnchor.constraint(equalTo: searchFieldBox.leadingAnchor, constant: 14),
-            searchField.trailingAnchor.constraint(equalTo: searchFieldBox.trailingAnchor, constant: -14),
+            searchField.trailingAnchor.constraint(equalTo: searchClearButton.leadingAnchor, constant: -8),
             searchField.centerYAnchor.constraint(equalTo: searchFieldBox.centerYAnchor),
+            searchClearButton.trailingAnchor.constraint(equalTo: searchFieldBox.trailingAnchor, constant: -16),
+            searchClearButton.centerYAnchor.constraint(equalTo: searchFieldBox.centerYAnchor),
+            searchClearButton.widthAnchor.constraint(equalToConstant: 22),
+            searchClearButton.heightAnchor.constraint(equalToConstant: 22),
             scrollView.leadingAnchor.constraint(equalTo: panelContent.leadingAnchor, constant: 28),
             scrollView.trailingAnchor.constraint(equalTo: panelContent.trailingAnchor, constant: -28),
             scrollView.topAnchor.constraint(equalTo: searchFieldBox.bottomAnchor, constant: 16),

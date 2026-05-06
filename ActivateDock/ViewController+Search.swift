@@ -16,9 +16,20 @@ extension ViewController: NSSearchFieldDelegate, NSTableViewDataSource, NSTableV
         searchField.drawsBackground = false
         searchField.focusRingType = .none
         (searchField.cell as? NSSearchFieldCell)?.searchButtonCell = nil
+        (searchField.cell as? NSSearchFieldCell)?.cancelButtonCell = nil
         searchField.delegate = self
         searchField.target = self
         searchField.action = #selector(handleSearchSubmit(_:))
+
+        searchClearButton.isBordered = false
+        searchClearButton.bezelStyle = .regularSquare
+        searchClearButton.imagePosition = .imageOnly
+        searchClearButton.image = NSImage(systemSymbolName: "xmark.circle.fill", accessibilityDescription: "Clear")
+        searchClearButton.contentTintColor = .secondaryLabelColor
+        searchClearButton.target = self
+        searchClearButton.action = #selector(handleSearchClear(_:))
+        searchClearButton.isHidden = true
+        searchClearButton.setButtonType(.momentaryChange)
 
         searchFieldBox.material = .menu
         searchFieldBox.blendingMode = .withinWindow
@@ -26,6 +37,7 @@ extension ViewController: NSSearchFieldDelegate, NSTableViewDataSource, NSTableV
         searchFieldBox.wantsLayer = true
         searchFieldBox.layer?.cornerRadius = 20
         searchFieldBox.layer?.masksToBounds = true
+        searchFieldBox.alphaValue = 0.75
 
         searchBackground.material = .menu
         searchBackground.blendingMode = .withinWindow
@@ -79,6 +91,7 @@ extension ViewController: NSSearchFieldDelegate, NSTableViewDataSource, NSTableV
     func updateForSearchText(_ text: String) {
         searchDebounceWorkItem?.cancel()
         searchDebounceWorkItem = nil
+        searchClearButton.isHidden = text.isEmpty
         let q = text.trimmingCharacters(in: .whitespacesAndNewlines)
         if q.isEmpty {
             searchResults = []
@@ -98,6 +111,7 @@ extension ViewController: NSSearchFieldDelegate, NSTableViewDataSource, NSTableV
     func controlTextDidChange(_ obj: Notification) {
         searchDebounceWorkItem?.cancel()
         let text = searchField.stringValue
+        searchClearButton.isHidden = text.isEmpty
         if text.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty {
             updateForSearchText(text)
             return
@@ -136,6 +150,12 @@ extension ViewController: NSSearchFieldDelegate, NSTableViewDataSource, NSTableV
         let next = max(0, min(searchResults.count - 1, current + delta))
         searchResultsTable.selectRowIndexes([next], byExtendingSelection: false)
         searchResultsTable.scrollRowToVisible(next)
+    }
+
+    @objc private func handleSearchClear(_ sender: Any?) {
+        searchField.stringValue = ""
+        updateForSearchText("")
+        view.window?.makeFirstResponder(searchField)
     }
 
     @objc private func handleSearchSubmit(_ sender: Any?) {

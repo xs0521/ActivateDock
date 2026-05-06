@@ -19,6 +19,7 @@ final class SearchResultCell: NSView {
 
     private func setup() {
         wantsLayer = true
+        layer?.backgroundColor = NSColor.clear.cgColor
         iconView.translatesAutoresizingMaskIntoConstraints = false
         iconView.imageScaling = .scaleProportionallyUpOrDown
         addSubview(iconView)
