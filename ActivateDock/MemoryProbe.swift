@@ -24,6 +24,10 @@ enum MemoryProbe {
     }
 
     /// Returns RSS for a single pid via proc_pidinfo(PROC_PIDTASKINFO).
+    /// We use RSS (not phys_footprint) to match Lemon's display: phys_footprint
+    /// reads as 0 for hardened-runtime helpers from unprivileged callers
+    /// (Lemon avoids this by sampling from a root daemon), and it also includes
+    /// GPU/Metal allocations that inflate apps like Xcode.
     private static func rss(of pid: pid_t) -> UInt64 {
         var info = proc_taskinfo()
         let size = Int32(MemoryLayout<proc_taskinfo>.size)
@@ -99,6 +103,7 @@ final class MemoryMonitor {
     private var timer: DispatchSourceTimer?
     private let queue = DispatchQueue(label: "MemoryMonitor.sample", qos: .utility)
     private var pids = Set<pid_t>()
+    private var lastReadings: [pid_t: UInt64] = [:]
     private let lock = NSLock()
 
     private init() {}
@@ -117,6 +122,11 @@ final class MemoryMonitor {
         let nowEmpty = pids.isEmpty
         lock.unlock()
         if nowEmpty { stopTimer() }
+    }
+
+    func lastReading(for pid: pid_t) -> UInt64? {
+        lock.lock(); defer { lock.unlock() }
+        return lastReadings[pid]
     }
 
     private func startTimer() {
@@ -138,6 +148,12 @@ final class MemoryMonitor {
         lock.unlock()
 
         let totals = MemoryProbe.aggregateByPpidTree(roots: snapshot)
+
+        lock.lock()
+        for (pid, bytes) in totals where bytes > 0 {
+            lastReadings[pid] = bytes
+        }
+        lock.unlock()
 
         DispatchQueue.main.async {
             for pid in snapshot {

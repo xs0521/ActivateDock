@@ -24,6 +24,7 @@ final class AppIconButton: NSButton {
 
     private let iconView = NSImageView()
     private let plusBadge = HoverableBadgeButton()
+    private let closeBadge = HoverableBadgeButton()
     private let memoryBackdrop = NSView()
     private let memoryLabel = NSTextField(labelWithString: "")
     private var trackingArea: NSTrackingArea?
@@ -68,6 +69,7 @@ final class AppIconButton: NSButton {
         addSubview(iconView)
 
         setupPlusBadge()
+        setupCloseBadge()
         setupMemoryLabel()
 
         NSLayoutConstraint.activate([
@@ -83,6 +85,11 @@ final class AppIconButton: NSButton {
             plusBadge.heightAnchor.constraint(equalToConstant: Self.badgeSize),
             plusBadge.centerXAnchor.constraint(equalTo: iconView.trailingAnchor, constant: -8),
             plusBadge.centerYAnchor.constraint(equalTo: iconView.topAnchor, constant: 8),
+
+            closeBadge.widthAnchor.constraint(equalToConstant: Self.badgeSize),
+            closeBadge.heightAnchor.constraint(equalToConstant: Self.badgeSize),
+            closeBadge.centerXAnchor.constraint(equalTo: iconView.leadingAnchor, constant: 8),
+            closeBadge.centerYAnchor.constraint(equalTo: iconView.topAnchor, constant: 8),
 
             memoryBackdrop.centerXAnchor.constraint(equalTo: centerXAnchor),
             memoryBackdrop.topAnchor.constraint(equalTo: iconView.bottomAnchor, constant: 1),
@@ -141,7 +148,11 @@ final class AppIconButton: NSButton {
             object: nil
         )
         MemoryMonitor.shared.track(pid)
-        isLoading = true
+        if let cached = MemoryMonitor.shared.lastReading(for: pid) {
+            memoryLabel.stringValue = MemoryProbe.format(cached)
+        } else {
+            isLoading = true
+        }
     }
 
     @objc private func handleMemoryUpdate(_ note: Notification) {
@@ -201,6 +212,34 @@ final class AppIconButton: NSButton {
         onPlusTapped?()
     }
 
+    private func setupCloseBadge() {
+        closeBadge.translatesAutoresizingMaskIntoConstraints = false
+        closeBadge.isBordered = false
+        closeBadge.title = ""
+        closeBadge.imagePosition = .imageOnly
+        closeBadge.contentTintColor = NSColor.white
+        let cfg = NSImage.SymbolConfiguration(pointSize: 16, weight: .regular)
+        closeBadge.image = NSImage(systemSymbolName: "xmark.circle.fill", accessibilityDescription: "退出应用")?
+            .withSymbolConfiguration(cfg)
+        closeBadge.wantsLayer = true
+        closeBadge.layer?.isOpaque = false
+        closeBadge.layer?.backgroundColor = NSColor.clear.cgColor
+        closeBadge.layer?.masksToBounds = false
+        let shadow = NSShadow()
+        shadow.shadowColor = NSColor.black.withAlphaComponent(0.6)
+        shadow.shadowOffset = NSSize(width: 0, height: -1)
+        shadow.shadowBlurRadius = 3
+        closeBadge.shadow = shadow
+        closeBadge.alphaValue = 0
+        closeBadge.target = self
+        closeBadge.action = #selector(handleCloseTap(_:))
+        addSubview(closeBadge)
+    }
+
+    @objc private func handleCloseTap(_ sender: NSButton) {
+        app.app.terminate()
+    }
+
     required init?(coder: NSCoder) { nil }
 
     override func updateTrackingAreas() {
@@ -232,6 +271,8 @@ final class AppIconButton: NSButton {
         isHovered = false
         plusBadge.layer?.removeAllAnimations()
         plusBadge.alphaValue = 0
+        closeBadge.layer?.removeAllAnimations()
+        closeBadge.alphaValue = 0
         layer?.removeAllAnimations()
         layer?.backgroundColor = NSColor.clear.cgColor
     }
@@ -251,6 +292,7 @@ final class AppIconButton: NSButton {
             ctx.duration = 0.15
             ctx.timingFunction = CAMediaTimingFunction(name: .easeOut)
             plusBadge.animator().alphaValue = isHovered ? 1 : 0
+            closeBadge.animator().alphaValue = isHovered ? 1 : 0
         }
     }
 
