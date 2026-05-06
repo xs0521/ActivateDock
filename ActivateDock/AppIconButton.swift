@@ -15,14 +15,31 @@ final class HoverableBadgeButton: NSButton {
 final class AppIconButton: NSButton {
     let app: RunningApp
 
-    private static let buttonSize: CGFloat = 72
+    static let buttonWidth: CGFloat = 72
+    static let buttonHeight: CGFloat = 72
     private static let iconSize: CGFloat = 56
     private static let badgeSize: CGFloat = 18
+    private static let memoryLabelHeight: CGFloat = 12
+    private static let memoryBackdropMinWidth: CGFloat = 46
 
     private let iconView = NSImageView()
     private let plusBadge = HoverableBadgeButton()
+    private let memoryBackdrop = NSView()
+    private let memoryLabel = NSTextField(labelWithString: "")
     private var trackingArea: NSTrackingArea?
     private var isHovered = false
+    private let pid: pid_t
+
+    private static let backdropColor = NSColor.black.withAlphaComponent(0.42).cgColor
+    private static let breathLowColor = NSColor.black.withAlphaComponent(0.18).cgColor
+    private static let breathHighColor = NSColor.black.withAlphaComponent(0.55).cgColor
+
+    private var isLoading = false {
+        didSet {
+            guard oldValue != isLoading else { return }
+            isLoading ? startLoadingAnimation() : stopLoadingAnimation()
+        }
+    }
 
     var onDragStart: ((NSPoint) -> Void)?
     var onDragMove: ((NSPoint) -> Void)?
@@ -33,6 +50,7 @@ final class AppIconButton: NSButton {
 
     init(app: RunningApp) {
         self.app = app
+        self.pid = app.app.processIdentifier
         super.init(frame: .zero)
         translatesAutoresizingMaskIntoConstraints = false
         isBordered = false
@@ -50,21 +68,109 @@ final class AppIconButton: NSButton {
         addSubview(iconView)
 
         setupPlusBadge()
+        setupMemoryLabel()
 
         NSLayoutConstraint.activate([
-            widthAnchor.constraint(equalToConstant: Self.buttonSize),
-            heightAnchor.constraint(equalToConstant: Self.buttonSize),
+            widthAnchor.constraint(equalToConstant: Self.buttonWidth),
+            heightAnchor.constraint(equalToConstant: Self.buttonHeight),
 
             iconView.centerXAnchor.constraint(equalTo: centerXAnchor),
-            iconView.centerYAnchor.constraint(equalTo: centerYAnchor),
+            iconView.topAnchor.constraint(equalTo: topAnchor),
             iconView.widthAnchor.constraint(equalToConstant: Self.iconSize),
             iconView.heightAnchor.constraint(equalToConstant: Self.iconSize),
 
             plusBadge.widthAnchor.constraint(equalToConstant: Self.badgeSize),
             plusBadge.heightAnchor.constraint(equalToConstant: Self.badgeSize),
             plusBadge.centerXAnchor.constraint(equalTo: iconView.trailingAnchor, constant: -8),
-            plusBadge.centerYAnchor.constraint(equalTo: iconView.topAnchor, constant: 8)
+            plusBadge.centerYAnchor.constraint(equalTo: iconView.topAnchor, constant: 8),
+
+            memoryBackdrop.centerXAnchor.constraint(equalTo: centerXAnchor),
+            memoryBackdrop.topAnchor.constraint(equalTo: iconView.bottomAnchor, constant: 1),
+            memoryBackdrop.heightAnchor.constraint(equalToConstant: Self.memoryLabelHeight + 2),
+            memoryBackdrop.widthAnchor.constraint(greaterThanOrEqualToConstant: Self.memoryBackdropMinWidth),
+            memoryBackdrop.leadingAnchor.constraint(greaterThanOrEqualTo: leadingAnchor, constant: 2),
+            memoryBackdrop.trailingAnchor.constraint(lessThanOrEqualTo: trailingAnchor, constant: -2),
+
+            memoryLabel.centerYAnchor.constraint(equalTo: memoryBackdrop.centerYAnchor),
+            memoryLabel.leadingAnchor.constraint(equalTo: memoryBackdrop.leadingAnchor, constant: 5),
+            memoryLabel.trailingAnchor.constraint(equalTo: memoryBackdrop.trailingAnchor, constant: -5)
         ])
+
+        startMemoryTracking()
+    }
+
+    deinit {
+        if pid > 0 {
+            MemoryMonitor.shared.untrack(pid)
+        }
+        NotificationCenter.default.removeObserver(self)
+    }
+
+    private func setupMemoryLabel() {
+        memoryBackdrop.translatesAutoresizingMaskIntoConstraints = false
+        memoryBackdrop.wantsLayer = true
+        memoryBackdrop.layer?.cornerRadius = (Self.memoryLabelHeight + 2) / 2
+        memoryBackdrop.layer?.backgroundColor = Self.backdropColor
+        memoryBackdrop.layer?.masksToBounds = false
+        let backdropShadow = NSShadow()
+        backdropShadow.shadowColor = NSColor.black.withAlphaComponent(0.45)
+        backdropShadow.shadowOffset = NSSize(width: 0, height: -1)
+        backdropShadow.shadowBlurRadius = 2.5
+        memoryBackdrop.shadow = backdropShadow
+        addSubview(memoryBackdrop)
+
+        memoryLabel.translatesAutoresizingMaskIntoConstraints = false
+        memoryLabel.font = .monospacedDigitSystemFont(ofSize: 9.5, weight: .medium)
+        memoryLabel.textColor = .white
+        memoryLabel.alignment = .center
+        memoryLabel.lineBreakMode = .byClipping
+        memoryLabel.maximumNumberOfLines = 1
+        memoryLabel.cell?.usesSingleLineMode = true
+        memoryLabel.stringValue = ""
+        memoryLabel.setContentHuggingPriority(.required, for: .horizontal)
+        memoryLabel.setContentCompressionResistancePriority(.required, for: .horizontal)
+        memoryBackdrop.addSubview(memoryLabel)
+    }
+
+    private func startMemoryTracking() {
+        guard pid > 0 else { return }
+        NotificationCenter.default.addObserver(
+            self,
+            selector: #selector(handleMemoryUpdate(_:)),
+            name: MemoryMonitor.didUpdateNotification,
+            object: nil
+        )
+        MemoryMonitor.shared.track(pid)
+        isLoading = true
+    }
+
+    @objc private func handleMemoryUpdate(_ note: Notification) {
+        guard let info = note.userInfo,
+              let updated = info[MemoryMonitor.pidKey] as? pid_t,
+              updated == pid else { return }
+        if let bytes = info[MemoryMonitor.bytesKey] as? UInt64 {
+            isLoading = false
+            memoryLabel.stringValue = MemoryProbe.format(bytes)
+        } else {
+            memoryLabel.stringValue = ""
+            isLoading = true
+        }
+    }
+
+    private func startLoadingAnimation() {
+        memoryLabel.stringValue = ""
+        let breath = CABasicAnimation(keyPath: "backgroundColor")
+        breath.fromValue = Self.breathLowColor
+        breath.toValue = Self.breathHighColor
+        breath.duration = 0.95
+        breath.autoreverses = true
+        breath.repeatCount = .infinity
+        breath.timingFunction = CAMediaTimingFunction(name: .easeInEaseOut)
+        memoryBackdrop.layer?.add(breath, forKey: "breath")
+    }
+
+    private func stopLoadingAnimation() {
+        memoryBackdrop.layer?.removeAnimation(forKey: "breath")
     }
 
     private func setupPlusBadge() {

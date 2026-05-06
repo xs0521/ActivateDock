@@ -19,8 +19,6 @@ class AppDelegate: NSObject, NSApplicationDelegate {
             self?.toggleLauncher()
         }
         HotKeyManager.shared.register()
-
-        AppActivator.ensureAccessibilityPrompt()
     }
 
     func applicationShouldHandleReopen(_ sender: NSApplication, hasVisibleWindows flag: Bool) -> Bool {
