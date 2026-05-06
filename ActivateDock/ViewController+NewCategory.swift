@@ -48,8 +48,7 @@ extension ViewController {
     }
 
     private func nextAccentColor() -> NSColor {
-        let palette: [NSColor] = [.systemTeal, .systemOrange, .systemMint, .systemIndigo, .systemYellow, .systemBrown]
         let used = Set(groupedApps.map { $0.accentColor })
-        return palette.first { !used.contains($0) } ?? .systemTeal
+        return AccentPalette.nextColor(excluding: used)
     }
 }

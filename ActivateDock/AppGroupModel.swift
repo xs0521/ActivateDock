@@ -48,21 +48,25 @@ enum AppGroupBuilder {
             if let idx = groups.firstIndex(where: { $0.title == dg.title }) {
                 groups[idx].items.append(contentsOf: dg.items)
             } else {
+                let used = Set(groups.map { $0.accentColor })
+                let recolored = AppGroup(
+                    title: dg.title,
+                    accentColor: AccentPalette.nextColor(excluding: used),
+                    items: dg.items
+                )
                 let insertAt = groups.firstIndex(where: { $0.title == "其他" }) ?? groups.count
-                groups.insert(dg, at: insertAt)
+                groups.insert(recolored, at: insertAt)
             }
         }
         return groups
     }
 
     private static func defaultGroups(from apps: [RunningApp]) -> [AppGroup] {
-        var groups: [AppGroup] = [
-            AppGroup(title: "即时通信", accentColor: .systemPurple, items: []),
-            AppGroup(title: "编程软件", accentColor: .systemBlue, items: []),
-            AppGroup(title: "浏览器", accentColor: .systemGreen, items: []),
-            AppGroup(title: "设计工具", accentColor: .systemPink, items: []),
-            AppGroup(title: "其他", accentColor: .systemGray, items: [])
-        ]
+        let titles = ["即时通信", "编程软件", "浏览器", "设计工具", "其他"]
+        let colors = AccentPalette.uniqueColors(count: titles.count)
+        var groups: [AppGroup] = zip(titles, colors).map {
+            AppGroup(title: $0, accentColor: $1, items: [])
+        }
 
         for app in apps {
             let name = app.displayName.lowercased()
