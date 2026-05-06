@@ -2,25 +2,16 @@
 //  MemoryProbe.swift
 //  ActivateDock
 //
+//  Memory aggregation strategy mirrors Tencent Lemon's `memoryTopRepeater`:
+//  enumerate every running process via sysctl(KERN_PROC_ALL), read each
+//  pid's resident_size via proc_pidinfo(PROC_PIDTASKINFO), then DFS the
+//  ppid tree from each tracked root and sum RSS over all descendants.
+//
 
 import Darwin
 import Foundation
 
-@_silgen_name("responsibility_get_pid_responsible_for_pid")
-private func responsibility_get_pid_responsible_for_pid(_ pid: pid_t) -> pid_t
-
 enum MemoryProbe {
-    static func physFootprint(pid: pid_t) -> UInt64? {
-        var info = rusage_info_current()
-        let result = withUnsafeMutablePointer(to: &info) { ptr -> Int32 in
-            ptr.withMemoryRebound(to: rusage_info_t?.self, capacity: 1) { rebound in
-                proc_pid_rusage(pid, RUSAGE_INFO_CURRENT, rebound)
-            }
-        }
-        guard result == 0 else { return nil }
-        return info.ri_phys_footprint
-    }
-
     static func format(_ bytes: UInt64) -> String {
         let mb = Double(bytes) / 1024.0 / 1024.0
         if mb < 10 {
@@ -32,31 +23,66 @@ enum MemoryProbe {
         }
     }
 
-    /// Sum phys_footprint of every running pid whose "responsible pid" matches one of `roots`.
-    /// This is how Activity Monitor groups helper processes (Chrome Helper, Electron renderers, etc.)
-    /// under their main app.
-    static func aggregateByResponsible(roots: Set<pid_t>) -> [pid_t: UInt64] {
+    /// Returns RSS for a single pid via proc_pidinfo(PROC_PIDTASKINFO).
+    private static func rss(of pid: pid_t) -> UInt64 {
+        var info = proc_taskinfo()
+        let size = Int32(MemoryLayout<proc_taskinfo>.size)
+        let written = proc_pidinfo(pid, PROC_PIDTASKINFO, 0, &info, size)
+        guard written == size else { return 0 }
+        return info.pti_resident_size
+    }
+
+    /// Snapshot every (pid, ppid) on the system using sysctl(KERN_PROC_ALL).
+    private static func snapshotProcessTable() -> [kinfo_proc] {
+        var mib: [Int32] = [CTL_KERN, KERN_PROC, KERN_PROC_ALL, 0]
+        var len = 0
+        guard sysctl(&mib, UInt32(mib.count), nil, &len, nil, 0) == 0, len > 0 else {
+            return []
+        }
+        let stride = MemoryLayout<kinfo_proc>.stride
+        let capacity = max(len / stride + 32, 1)
+        var bufferLen = capacity * stride
+        let buffer = UnsafeMutablePointer<kinfo_proc>.allocate(capacity: capacity)
+        defer { buffer.deallocate() }
+        guard sysctl(&mib, UInt32(mib.count), buffer, &bufferLen, nil, 0) == 0 else {
+            return []
+        }
+        let actual = bufferLen / stride
+        return Array(UnsafeBufferPointer(start: buffer, count: actual))
+    }
+
+    /// Sum RSS of every pid in each root's descendant tree (root inclusive).
+    /// Mirrors Lemon's post-order traversal but uses iterative DFS per root,
+    /// which is enough for our handful of tracked roots.
+    static func aggregateByPpidTree(roots: Set<pid_t>) -> [pid_t: UInt64] {
         var totals: [pid_t: UInt64] = [:]
         for r in roots { totals[r] = 0 }
         guard !roots.isEmpty else { return totals }
 
-        let probeBytes = proc_listallpids(nil, 0)
-        guard probeBytes > 0 else { return totals }
-        let stride = MemoryLayout<pid_t>.size
-        let capacity = Int(probeBytes) / stride + 64
-        var pids = [pid_t](repeating: 0, count: capacity)
-        let written = proc_listallpids(&pids, Int32(capacity * stride))
-        guard written > 0 else { return totals }
-        let count = Int(written) / stride
+        let table = snapshotProcessTable()
+        guard !table.isEmpty else { return totals }
 
-        for i in 0..<count {
-            let p = pids[i]
-            guard p > 0 else { continue }
-            let resp = responsibility_get_pid_responsible_for_pid(p)
-            guard resp > 0, totals[resp] != nil else { continue }
-            if let bytes = physFootprint(pid: p) {
-                totals[resp]! += bytes
+        var rssOf: [pid_t: UInt64] = [:]
+        var children: [pid_t: [pid_t]] = [:]
+        rssOf.reserveCapacity(table.count)
+        children.reserveCapacity(table.count)
+
+        for entry in table {
+            let pid = entry.kp_proc.p_pid
+            let ppid = entry.kp_eproc.e_ppid
+            guard pid > 0 else { continue }
+            rssOf[pid] = rss(of: pid)
+            children[ppid, default: []].append(pid)
+        }
+
+        for root in roots {
+            var sum: UInt64 = rssOf[root] ?? 0
+            var stack: [pid_t] = children[root] ?? []
+            while let p = stack.popLast() {
+                sum += rssOf[p] ?? 0
+                if let kids = children[p] { stack.append(contentsOf: kids) }
             }
+            totals[root] = sum
         }
         return totals
     }
@@ -111,12 +137,12 @@ final class MemoryMonitor {
         let snapshot = pids
         lock.unlock()
 
-        let totals = MemoryProbe.aggregateByResponsible(roots: snapshot)
+        let totals = MemoryProbe.aggregateByPpidTree(roots: snapshot)
 
         DispatchQueue.main.async {
             for pid in snapshot {
                 var info: [String: Any] = [Self.pidKey: pid]
-                if let bytes = totals[pid] { info[Self.bytesKey] = bytes }
+                if let bytes = totals[pid], bytes > 0 { info[Self.bytesKey] = bytes }
                 NotificationCenter.default.post(
                     name: Self.didUpdateNotification,
                     object: nil,
