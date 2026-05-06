@@ -82,7 +82,7 @@ final class ViewController: NSViewController {
     }
 
     func handleAppTapped(_ button: AppIconButton) {
-        if button.app.app.activate(options: [.activateAllWindows]) {
+        if AppActivator.activate(button.app.app) {
             view.window?.orderOut(nil)
         }
     }
