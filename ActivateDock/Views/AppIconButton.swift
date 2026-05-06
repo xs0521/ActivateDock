@@ -5,37 +5,31 @@
 
 import Cocoa
 
-final class HoverableBadgeButton: NSButton {
-    override func hitTest(_ point: NSPoint) -> NSView? {
-        guard alphaValue > 0.05 else { return nil }
-        return super.hitTest(point)
-    }
-}
-
 final class AppIconButton: NSButton {
     let app: RunningApp
 
     static let buttonWidth: CGFloat = 72
     static let buttonHeight: CGFloat = 72
-    private static let iconSize: CGFloat = 56
-    private static let badgeSize: CGFloat = 18
-    private static let memoryLabelHeight: CGFloat = 12
-    private static let memoryBackdropMinWidth: CGFloat = 46
+    static let iconSize: CGFloat = 56
+    static let badgeSize: CGFloat = 18
+    static let memoryLabelHeight: CGFloat = 12
+    static let memoryBackdropMinWidth: CGFloat = 46
 
-    private let iconView = NSImageView()
-    private let plusBadge = HoverableBadgeButton()
-    private let closeBadge = HoverableBadgeButton()
-    private let memoryBackdrop = NSView()
-    private let memoryLabel = NSTextField(labelWithString: "")
+    static let backdropColor = NSColor.black.withAlphaComponent(0.42).cgColor
+    static let breathLowColor = NSColor.black.withAlphaComponent(0.18).cgColor
+    static let breathHighColor = NSColor.black.withAlphaComponent(0.55).cgColor
+
+    let iconView = NSImageView()
+    let plusBadge = HoverableBadgeButton()
+    let closeBadge = HoverableBadgeButton()
+    let memoryBackdrop = NSView()
+    let memoryLabel = NSTextField(labelWithString: "")
+    let pid: pid_t
+
     private var trackingArea: NSTrackingArea?
     private var isHovered = false
-    private let pid: pid_t
 
-    private static let backdropColor = NSColor.black.withAlphaComponent(0.42).cgColor
-    private static let breathLowColor = NSColor.black.withAlphaComponent(0.18).cgColor
-    private static let breathHighColor = NSColor.black.withAlphaComponent(0.55).cgColor
-
-    private var isLoading = false {
+    var isLoading = false {
         didSet {
             guard oldValue != isLoading else { return }
             isLoading ? startLoadingAnimation() : stopLoadingAnimation()
@@ -111,133 +105,6 @@ final class AppIconButton: NSButton {
             MemoryMonitor.shared.untrack(pid)
         }
         NotificationCenter.default.removeObserver(self)
-    }
-
-    private func setupMemoryLabel() {
-        memoryBackdrop.translatesAutoresizingMaskIntoConstraints = false
-        memoryBackdrop.wantsLayer = true
-        memoryBackdrop.layer?.cornerRadius = (Self.memoryLabelHeight + 2) / 2
-        memoryBackdrop.layer?.backgroundColor = Self.backdropColor
-        memoryBackdrop.layer?.masksToBounds = false
-        let backdropShadow = NSShadow()
-        backdropShadow.shadowColor = NSColor.black.withAlphaComponent(0.45)
-        backdropShadow.shadowOffset = NSSize(width: 0, height: -1)
-        backdropShadow.shadowBlurRadius = 2.5
-        memoryBackdrop.shadow = backdropShadow
-        addSubview(memoryBackdrop)
-
-        memoryLabel.translatesAutoresizingMaskIntoConstraints = false
-        memoryLabel.font = .monospacedDigitSystemFont(ofSize: 9.5, weight: .medium)
-        memoryLabel.textColor = .white
-        memoryLabel.alignment = .center
-        memoryLabel.lineBreakMode = .byClipping
-        memoryLabel.maximumNumberOfLines = 1
-        memoryLabel.cell?.usesSingleLineMode = true
-        memoryLabel.stringValue = ""
-        memoryLabel.setContentHuggingPriority(.required, for: .horizontal)
-        memoryLabel.setContentCompressionResistancePriority(.required, for: .horizontal)
-        memoryBackdrop.addSubview(memoryLabel)
-    }
-
-    private func startMemoryTracking() {
-        guard pid > 0 else { return }
-        NotificationCenter.default.addObserver(
-            self,
-            selector: #selector(handleMemoryUpdate(_:)),
-            name: MemoryMonitor.didUpdateNotification,
-            object: nil
-        )
-        MemoryMonitor.shared.track(pid)
-        if let cached = MemoryMonitor.shared.lastReading(for: pid) {
-            memoryLabel.stringValue = MemoryProbe.format(cached)
-        } else {
-            isLoading = true
-        }
-    }
-
-    @objc private func handleMemoryUpdate(_ note: Notification) {
-        guard let info = note.userInfo,
-              let updated = info[MemoryMonitor.pidKey] as? pid_t,
-              updated == pid else { return }
-        if let bytes = info[MemoryMonitor.bytesKey] as? UInt64 {
-            isLoading = false
-            memoryLabel.stringValue = MemoryProbe.format(bytes)
-        } else {
-            memoryLabel.stringValue = ""
-            isLoading = true
-        }
-    }
-
-    private func startLoadingAnimation() {
-        memoryLabel.stringValue = ""
-        let breath = CABasicAnimation(keyPath: "backgroundColor")
-        breath.fromValue = Self.breathLowColor
-        breath.toValue = Self.breathHighColor
-        breath.duration = 0.95
-        breath.autoreverses = true
-        breath.repeatCount = .infinity
-        breath.timingFunction = CAMediaTimingFunction(name: .easeInEaseOut)
-        memoryBackdrop.layer?.add(breath, forKey: "breath")
-    }
-
-    private func stopLoadingAnimation() {
-        memoryBackdrop.layer?.removeAnimation(forKey: "breath")
-    }
-
-    private func setupPlusBadge() {
-        plusBadge.translatesAutoresizingMaskIntoConstraints = false
-        plusBadge.isBordered = false
-        plusBadge.title = ""
-        plusBadge.imagePosition = .imageOnly
-        plusBadge.contentTintColor = NSColor.white
-        let cfg = NSImage.SymbolConfiguration(pointSize: 14, weight: .regular)
-        plusBadge.image = NSImage(systemSymbolName: "folder.fill", accessibilityDescription: "new category")?
-            .withSymbolConfiguration(cfg)
-        plusBadge.wantsLayer = true
-        plusBadge.layer?.isOpaque = false
-        plusBadge.layer?.backgroundColor = NSColor.clear.cgColor
-        plusBadge.layer?.masksToBounds = false
-        let shadow = NSShadow()
-        shadow.shadowColor = NSColor.black.withAlphaComponent(0.6)
-        shadow.shadowOffset = NSSize(width: 0, height: -1)
-        shadow.shadowBlurRadius = 3
-        plusBadge.shadow = shadow
-        plusBadge.alphaValue = 0
-        plusBadge.target = self
-        plusBadge.action = #selector(handlePlusTap(_:))
-        addSubview(plusBadge)
-    }
-
-    @objc private func handlePlusTap(_ sender: NSButton) {
-        onPlusTapped?()
-    }
-
-    private func setupCloseBadge() {
-        closeBadge.translatesAutoresizingMaskIntoConstraints = false
-        closeBadge.isBordered = false
-        closeBadge.title = ""
-        closeBadge.imagePosition = .imageOnly
-        closeBadge.contentTintColor = NSColor.white
-        let cfg = NSImage.SymbolConfiguration(pointSize: 16, weight: .regular)
-        closeBadge.image = NSImage(systemSymbolName: "xmark.circle.fill", accessibilityDescription: "quit")?
-            .withSymbolConfiguration(cfg)
-        closeBadge.wantsLayer = true
-        closeBadge.layer?.isOpaque = false
-        closeBadge.layer?.backgroundColor = NSColor.clear.cgColor
-        closeBadge.layer?.masksToBounds = false
-        let shadow = NSShadow()
-        shadow.shadowColor = NSColor.black.withAlphaComponent(0.6)
-        shadow.shadowOffset = NSSize(width: 0, height: -1)
-        shadow.shadowBlurRadius = 3
-        closeBadge.shadow = shadow
-        closeBadge.alphaValue = 0
-        closeBadge.target = self
-        closeBadge.action = #selector(handleCloseTap(_:))
-        addSubview(closeBadge)
-    }
-
-    @objc private func handleCloseTap(_ sender: NSButton) {
-        app.app.terminate()
     }
 
     required init?(coder: NSCoder) { nil }
