@@ -8,6 +8,7 @@ import Cocoa
 struct InstalledApp {
     let url: URL
     let displayName: String
+    let lowercaseName: String
     let icon: NSImage
 }
 
@@ -44,7 +45,13 @@ enum InstalledAppsCatalog {
             if entry.pathExtension == "app" {
                 let icon = NSWorkspace.shared.icon(forFile: entry.path)
                 icon.size = NSSize(width: 32, height: 32)
-                apps.append(InstalledApp(url: entry, displayName: displayName(for: entry), icon: icon))
+                let name = displayName(for: entry)
+                apps.append(InstalledApp(
+                    url: entry,
+                    displayName: name,
+                    lowercaseName: name.lowercased(),
+                    icon: icon
+                ))
             } else if let isDir = (try? entry.resourceValues(forKeys: [.isDirectoryKey]))?.isDirectory, isDir {
                 apps.append(contentsOf: scan(path: entry.path, depth: depth + 1, maxDepth: maxDepth))
             }
@@ -66,7 +73,7 @@ enum InstalledAppsCatalog {
         var prefix: [InstalledApp] = []
         var contains: [InstalledApp] = []
         for app in apps {
-            let n = app.displayName.lowercased()
+            let n = app.lowercaseName
             if n.hasPrefix(q) { prefix.append(app) }
             else if n.contains(q) { contains.append(app) }
         }

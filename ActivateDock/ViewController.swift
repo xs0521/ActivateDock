@@ -23,6 +23,7 @@ final class ViewController: NSViewController {
     var groupedApps: [AppGroup] = []
     var installedApps: [InstalledApp] = []
     var searchResults: [InstalledApp] = []
+    var searchDebounceWorkItem: DispatchWorkItem?
 
     var cardDragOverlay: NSImageView?
     var cardDragSourceIndex: Int?

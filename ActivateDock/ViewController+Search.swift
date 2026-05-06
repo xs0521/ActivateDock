@@ -77,6 +77,8 @@ extension ViewController: NSSearchFieldDelegate, NSTableViewDataSource, NSTableV
     }
 
     func updateForSearchText(_ text: String) {
+        searchDebounceWorkItem?.cancel()
+        searchDebounceWorkItem = nil
         let q = text.trimmingCharacters(in: .whitespacesAndNewlines)
         if q.isEmpty {
             searchResults = []
@@ -94,7 +96,17 @@ extension ViewController: NSSearchFieldDelegate, NSTableViewDataSource, NSTableV
     }
 
     func controlTextDidChange(_ obj: Notification) {
-        updateForSearchText(searchField.stringValue)
+        searchDebounceWorkItem?.cancel()
+        let text = searchField.stringValue
+        if text.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty {
+            updateForSearchText(text)
+            return
+        }
+        let work = DispatchWorkItem { [weak self] in
+            self?.updateForSearchText(text)
+        }
+        searchDebounceWorkItem = work
+        DispatchQueue.main.asyncAfter(deadline: .now() + 0.12, execute: work)
     }
 
     func control(_ control: NSControl, textView: NSTextView, doCommandBy commandSelector: Selector) -> Bool {
@@ -127,6 +139,11 @@ extension ViewController: NSSearchFieldDelegate, NSTableViewDataSource, NSTableV
     }
 
     @objc private func handleSearchSubmit(_ sender: Any?) {
+        let trimmed = searchField.stringValue.trimmingCharacters(in: .whitespacesAndNewlines)
+        if trimmed.isEmpty {
+            updateForSearchText("")
+            return
+        }
         let row: Int
         if searchResultsTable.selectedRow >= 0 {
             row = searchResultsTable.selectedRow
@@ -146,7 +163,13 @@ extension ViewController: NSSearchFieldDelegate, NSTableViewDataSource, NSTableV
     func numberOfRows(in tableView: NSTableView) -> Int { searchResults.count }
 
     func tableView(_ tableView: NSTableView, viewFor tableColumn: NSTableColumn?, row: Int) -> NSView? {
-        let cell = SearchResultCell(frame: .zero)
+        let cell: SearchResultCell
+        if let reused = tableView.makeView(withIdentifier: SearchResultCell.reuseIdentifier, owner: self) as? SearchResultCell {
+            cell = reused
+        } else {
+            cell = SearchResultCell(frame: .zero)
+            cell.identifier = SearchResultCell.reuseIdentifier
+        }
         if searchResults.indices.contains(row) { cell.configure(with: searchResults[row]) }
         return cell
     }

@@ -6,6 +6,8 @@
 import Cocoa
 
 final class SearchResultCell: NSView {
+    static let reuseIdentifier = NSUserInterfaceItemIdentifier("SearchResultCell")
+
     private let iconView = NSImageView()
     private let titleLabel = NSTextField(labelWithString: "")
 
