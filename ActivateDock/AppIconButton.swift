@@ -83,12 +83,12 @@ final class AppIconButton: NSButton {
 
             plusBadge.widthAnchor.constraint(equalToConstant: Self.badgeSize),
             plusBadge.heightAnchor.constraint(equalToConstant: Self.badgeSize),
-            plusBadge.centerXAnchor.constraint(equalTo: iconView.trailingAnchor, constant: -8),
+            plusBadge.centerXAnchor.constraint(equalTo: iconView.trailingAnchor, constant: -4),
             plusBadge.centerYAnchor.constraint(equalTo: iconView.topAnchor, constant: 8),
 
             closeBadge.widthAnchor.constraint(equalToConstant: Self.badgeSize),
             closeBadge.heightAnchor.constraint(equalToConstant: Self.badgeSize),
-            closeBadge.centerXAnchor.constraint(equalTo: iconView.leadingAnchor, constant: 8),
+            closeBadge.centerXAnchor.constraint(equalTo: iconView.leadingAnchor, constant: 4),
             closeBadge.centerYAnchor.constraint(equalTo: iconView.topAnchor, constant: 8),
 
             memoryBackdrop.centerXAnchor.constraint(equalTo: centerXAnchor),
@@ -191,7 +191,7 @@ final class AppIconButton: NSButton {
         plusBadge.imagePosition = .imageOnly
         plusBadge.contentTintColor = NSColor.white
         let cfg = NSImage.SymbolConfiguration(pointSize: 14, weight: .regular)
-        plusBadge.image = NSImage(systemSymbolName: "folder.fill", accessibilityDescription: "新建分类")?
+        plusBadge.image = NSImage(systemSymbolName: "folder.fill", accessibilityDescription: "new category")?
             .withSymbolConfiguration(cfg)
         plusBadge.wantsLayer = true
         plusBadge.layer?.isOpaque = false
@@ -219,7 +219,7 @@ final class AppIconButton: NSButton {
         closeBadge.imagePosition = .imageOnly
         closeBadge.contentTintColor = NSColor.white
         let cfg = NSImage.SymbolConfiguration(pointSize: 16, weight: .regular)
-        closeBadge.image = NSImage(systemSymbolName: "xmark.circle.fill", accessibilityDescription: "退出应用")?
+        closeBadge.image = NSImage(systemSymbolName: "xmark.circle.fill", accessibilityDescription: "quit")?
             .withSymbolConfiguration(cfg)
         closeBadge.wantsLayer = true
         closeBadge.layer?.isOpaque = false
