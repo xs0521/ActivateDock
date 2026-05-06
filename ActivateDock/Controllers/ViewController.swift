@@ -2,7 +2,6 @@
 //  ViewController.swift
 //  ActivateDock
 //
-//  Created by luoshuai on 2026/5/5.
 //
 
 import Cocoa
@@ -120,7 +119,7 @@ final class ViewController: NSViewController {
             .map {
                 RunningApp(
                     app: $0,
-                    displayName: $0.localizedName ?? "未知应用",
+                    displayName: $0.localizedName ?? "unknow application",
                     bundleIdentifier: $0.bundleIdentifier ?? ""
                 )
             }

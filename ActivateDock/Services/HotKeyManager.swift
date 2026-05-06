@@ -10,6 +10,7 @@ final class HotKeyManager {
     static let shared = HotKeyManager()
 
     var onTrigger: (() -> Void)?
+    private(set) var currentCombo: HotKeyCombo = .default
 
     private var hotKeyRef: EventHotKeyRef?
     private var eventHandler: EventHandlerRef?
@@ -17,10 +18,15 @@ final class HotKeyManager {
 
     private init() {}
 
-    /// Register Option+Space as the global toggle hotkey.
     func register() {
+        register(combo: HotKeyCombo.loadStored())
+    }
+
+    @discardableResult
+    func register(combo: HotKeyCombo) -> Bool {
         installEventHandler()
-        registerCombo(keyCode: UInt32(kVK_Space), modifiers: UInt32(optionKey))
+        currentCombo = combo
+        return registerCombo(keyCode: combo.keyCode, modifiers: combo.modifiers)
     }
 
     func unregister() {
@@ -55,7 +61,8 @@ final class HotKeyManager {
         )
     }
 
-    private func registerCombo(keyCode: UInt32, modifiers: UInt32) {
+    @discardableResult
+    private func registerCombo(keyCode: UInt32, modifiers: UInt32) -> Bool {
         if let existing = hotKeyRef {
             UnregisterEventHotKey(existing)
             hotKeyRef = nil
@@ -71,6 +78,8 @@ final class HotKeyManager {
         )
         if status != noErr {
             NSLog("[HotKey] register failed: %d", status)
+            return false
         }
+        return true
     }
 }

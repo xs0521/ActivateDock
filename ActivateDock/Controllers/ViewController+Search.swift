@@ -184,7 +184,9 @@ extension ViewController: NSSearchFieldDelegate {
         }
         guard searchResults.indices.contains(row) else { return }
         let app = searchResults[row]
-        NSWorkspace.shared.open(app.url)
+        NSWorkspace.shared.openApplication(at: app.url,
+                                           configuration: NSWorkspace.OpenConfiguration(),
+                                           completionHandler: nil)
         searchField.stringValue = ""
         updateForSearchText("")
         view.window?.orderOut(nil)
