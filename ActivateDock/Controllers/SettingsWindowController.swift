@@ -11,12 +11,13 @@ final class SettingsWindowController: NSWindowController, NSWindowDelegate {
 
     private let recorder = KeyRecorderView(combo: HotKeyManager.shared.currentCombo)
     private let accessibilitySwitch = StateSwitch()
+    private let pluginsView = PluginsSettingsView()
     private var accessibilityTimer: Timer?
     private var hasPromptedAccessibility = false
 
     private convenience init() {
         let window = NSWindow(
-            contentRect: NSRect(x: 0, y: 0, width: 420, height: 200),
+            contentRect: NSRect(x: 0, y: 0, width: 480, height: 520),
             styleMask: [.titled, .closable],
             backing: .buffered,
             defer: false
@@ -28,13 +29,15 @@ final class SettingsWindowController: NSWindowController, NSWindowDelegate {
         window.delegate = self
         window.contentView = SettingsContentBuilder.build(
             recorder: recorder,
-            accessibilitySwitch: accessibilitySwitch
+            accessibilitySwitch: accessibilitySwitch,
+            pluginsView: pluginsView
         )
         wireActions()
     }
 
     func showAndActivate() {
         recorder.combo = HotKeyManager.shared.currentCombo
+        pluginsView.rebuild()
         refreshAccessibility()
         startAccessibilityWatch()
 

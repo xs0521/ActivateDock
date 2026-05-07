@@ -7,7 +7,8 @@ import Cocoa
 
 enum SettingsContentBuilder {
     static func build(recorder: KeyRecorderView,
-                      accessibilitySwitch: StateSwitch) -> NSView {
+                      accessibilitySwitch: StateSwitch,
+                      pluginsView: PluginsSettingsView) -> NSView {
         let stack = NSStackView()
         stack.orientation = .vertical
         stack.alignment = .leading
@@ -26,6 +27,9 @@ enum SettingsContentBuilder {
             subtitle: "Used to restore minimized windows when you click an app icon. App switching still works without this permission.",
             trailing: accessibilitySwitch
         ))
+        stack.addArrangedSubview(makeDivider())
+        stack.addArrangedSubview(makePluginsHeader())
+        stack.addArrangedSubview(pluginsView)
 
         let container = NSView()
         container.addSubview(stack)
@@ -72,6 +76,16 @@ enum SettingsContentBuilder {
         label.textColor = .secondaryLabelColor
         label.preferredMaxLayoutWidth = 360
         return label
+    }
+
+    private static func makePluginsHeader() -> NSView {
+        let title = makeTitle("Plugins")
+        let subtitle = makeSubtitle("Override variables declared by each installed plugin's info.plist. Values are stored locally and merged on top of the manifest's defaults at run time.")
+        let stack = NSStackView(views: [title, subtitle])
+        stack.orientation = .vertical
+        stack.alignment = .leading
+        stack.spacing = 6
+        return stack
     }
 
     private static func makeDivider() -> NSView {

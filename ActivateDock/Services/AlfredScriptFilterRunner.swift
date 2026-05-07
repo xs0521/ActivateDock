@@ -42,7 +42,9 @@ final class AlfredScriptFilterRunner {
         process.currentDirectoryURL = workflow.directory
 
         var mergedEnv = ProcessInfo.processInfo.environment
-        for (k, v) in workflow.variables { mergedEnv[k] = v }
+        for (k, v) in PluginConfigStore.shared.mergedVariables(for: workflow) {
+            mergedEnv[k] = v
+        }
         process.environment = mergedEnv
 
         let outPipe = Pipe()

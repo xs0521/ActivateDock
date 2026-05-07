@@ -44,4 +44,8 @@ final class WorkflowRegistry {
     var keywords: [String] {
         Array(byKeyword.keys).sorted()
     }
+
+    var allWorkflows: [Workflow] {
+        Array(byKeyword.values).sorted { $0.name < $1.name }
+    }
 }

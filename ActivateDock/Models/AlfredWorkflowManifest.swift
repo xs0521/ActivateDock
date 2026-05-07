@@ -12,6 +12,7 @@ import Foundation
 struct AlfredWorkflowManifest: Decodable {
     let bundleid: String?
     let name: String?
+    let description: String?
     let variables: [String: String]?
     let objects: [WorkflowObject]?
 }

@@ -11,6 +11,7 @@ import Foundation
 struct Workflow {
     let bundleId: String
     let name: String
+    let description: String?
     let directory: URL
     let keyword: String
     let scriptCommand: String

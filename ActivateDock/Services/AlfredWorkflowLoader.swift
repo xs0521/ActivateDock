@@ -48,6 +48,7 @@ enum AlfredWorkflowLoader {
         guard let objects = manifest.objects else { return [] }
         let bundleId = manifest.bundleid ?? directory.lastPathComponent
         let displayName = manifest.name ?? directory.lastPathComponent
+        let description = manifest.description?.trimmingCharacters(in: .whitespacesAndNewlines)
         let variables = manifest.variables ?? [:]
 
         var workflows: [Workflow] = []
@@ -64,6 +65,7 @@ enum AlfredWorkflowLoader {
             workflows.append(Workflow(
                 bundleId: bundleId,
                 name: displayName,
+                description: (description?.isEmpty ?? true) ? nil : description,
                 directory: directory,
                 keyword: keyword,
                 scriptCommand: script,
