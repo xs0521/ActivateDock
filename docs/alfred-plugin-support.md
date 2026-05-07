@@ -16,7 +16,8 @@
 | **A 路径** | ✅ 完成 | `433cfd7` | 真 Youdao 插件 + Settings 配置 UI |
 | **C 路径** | ✅ 完成 | `35c084c` | UX 打磨(hint / loading / 错误美化 / 防抖调长) |
 | **F1 + F2** | ✅ 完成 | `e4dc3b5` | 凭证安全(secret → Keychain · NSSecureTextField) |
-| **F3 / F4 / TD-5 / F2-eye** | ✅ 完成 | _待提交_ | 热重载 · Settings ScrollView · stderr 实时日志 · secret 可见性切换 |
+| **F3 / F4 / TD-5 / F2-eye** | ✅ 完成 | `0c6b702` | 热重载 · Settings ScrollView · stderr 实时日志 · secret 可见性切换 |
+| **F5 / F6 / F7 / F8** | ✅ 完成 | `9e2b94a` | 加载失败 + keyword 冲突 UI · 命令构造威胁模型 · manifest `secretvariables` |
 
 **已识别但未规划的 follow-up** 见 §1.5。
 
@@ -93,6 +94,10 @@ A 路径完成后衍生的工程性事项,优先级跟 C 类似,但属于"打磨
 | F2 | ✅ secret 字段改用 `NSSecureTextField` | 配置 UI 隐私 | 低 — 见下 |
 | F3 | ✅ `WorkflowRegistry` 加 FSEventStream 监听,装/改/删插件后自动 reload | 开发体验 | 中 |
 | F4 | ✅ Settings 窗口外层包了 `NSScrollView`,plugin 多了不再溢出 | UI 健壮性 | 低 |
+| F5 | ✅ keyword 同名冲突在 Settings 里以橙色 banner 列出(kept / ignored) | 一致性 | 低 |
+| F6 | ✅ 插件加载失败(缺 plist / 解析失败 / scriptfilter 缺字段)同 banner 列出 | 一致性 | 低 |
+| F7 | ✅ 命令构造威胁模型写入 `Workflow.swift` 文件头注释 | 安全文档 | 极低 |
+| F8 | ✅ manifest 新增可选 `secretvariables: [String]`,声明优先于名字启发式 | 凭证安全 | 中 |
 
 **F1 + F2 实际交付**:
 - `Services/Keychain.swift` — `SecItem*` 薄封装,service =
@@ -115,6 +120,25 @@ A 路径完成后衍生的工程性事项,优先级跟 C 类似,但属于"打磨
 眼睛按钮(`eye` / `eye.slash`),点击同步两边的 stringValue + 切换 `isHidden` +
 迁移 firstResponder 到当前 active field。delegate / placeholder / stringValue
 都按 active 字段透传,既有的 `controlTextDidEndEditing` pipeline 不用改。
+
+**F5 / F6 / F7 / F8 实际交付**:
+- `Models/PluginLoadDiagnostics.swift` — 新增 `PluginLoadFailure`(`.missingInfoPlist`
+  / `.decodeFailed(detail)` / `.missingScriptFilterFields(objectUid)`)和
+  `PluginKeywordConflict`(`kept` + `dropped: [Workflow]`)两个值类型。
+- `Services/AlfredWorkflowLoader.swift` — `loadAll(at:)` 改返回
+  `LoadResult { workflows, failures }`,失败不再只 `NSLog skip`。
+- `Services/WorkflowRegistry.swift` — 重载后保留 `loadFailures`、
+  `keywordConflicts`、`declaredSecretsByBundle`,供 UI 与 sensitivity 检查读取。
+- `Views/PluginsSettingsView+Diagnostics.swift` — 在 plugins 列表顶部画一个橙色
+  "Plugin issues" banner,逐行列出加载失败和 keyword 冲突。
+- `Models/Workflow.swift` — 文件头补 "Threat model for command construction":
+  只有 `{query}` 走 shell-quote,其余 manifest 字段当作用户已审计过的代码运行,
+  对齐 Alfred 自身的契约。
+- `Models/AlfredWorkflowManifest.swift` — 新增可选 `secretvariables: [String]`
+  自定义字段(Alfred 原生没有 secret 标记)。
+- `Services/PluginVariableSensitivity.swift` — `isSecret(bundleId:varKey:)`:声明
+  优先,启发式兜底。`PluginConfigStore` 与 `PluginsSettingsView+Rows` 全量切到
+  bundle-aware 签名。
 
 ---
 
@@ -193,9 +217,10 @@ A 路径完成后衍生的工程性事项,优先级跟 C 类似,但属于"打磨
 | **A 跟在 B 后** | B 完成后,跑真 Youdao = "把改过的 plugin 放进 plugin 目录 + 配 env",几乎零工作量。 | ✅ commit `433cfd7`(顺手扩展了 Settings UI) |
 | **C 最后** | UX 容易反复,在架构稳定前打磨容易做无用功。 | ✅ commit `35c084c` |
 | **F1 + F2 (顺手加固)** | C 完成后顺势把 secret 凭证安全收尾。 | ✅ commit `e4dc3b5` |
-| **F3 / F4 / TD-5 / F2-eye** | F1+F2 之后用户希望把 §1.5 列出的全部 follow-up 一并清掉。 | ✅ _待提交_ |
+| **F3 / F4 / TD-5 / F2-eye** | F1+F2 之后用户希望把 §1.5 列出的全部 follow-up 一并清掉。 | ✅ commit `0c6b702` |
+| **F5 / F6 / F7 / F8** | §5 列出的"未规划候选"被用户提级,一次清完:加载失败/冲突 UI 提示、命令构造威胁模型、`secretvariables` 显式声明。 | ✅ commit `9e2b94a` |
 
-**当前候选**:四个 follow-up 全部交付,剩下的健壮性/范围议题见 §5。
+**当前候选**:F1–F8 全部交付,剩下的范围议题见 §5 / §6。
 
 ---
 
@@ -263,15 +288,10 @@ A 路径完成后衍生的工程性事项,优先级跟 C 类似,但属于"打磨
 
 ## 5. 未做事项汇总(写给"下一段时间想做点什么"的自己)
 
-§1.5 列出的 4 条 follow-up(F3 / F4 / TD-5 / F2-eye)已全部交付,剩下的是
-更长尾的健壮性 / 体验候选,尚未规划进任何路径。
+§1.5 列出的 8 条 follow-up(F1–F8)已全部交付。**目前没有未规划的健壮性 / 体验候选** —
+新发现的事项请先开条目进 §1.5,再来这里登记。
 
-**一致性 / 健壮性候选**(尚未规划成正式条目):
-
-- 多 keyword 同名时 registry 只保留首个 + NSLog,UI 上没有提示;装多个冲突插件无法察觉。
-- 插件目录结构错误(缺 plist / plist 解析失败)只 NSLog skip,Settings 看不到"加载失败"列表。
-- `Workflow.scriptCommand` 走 `/bin/sh -c`,`{query}` 已 shell-quote,但其他 manifest 字段(env value 等)未审计 — 当前威胁面低(用户自己装的插件),但记录在案。
-- `PluginVariableSensitivity.isSecret` 是名字启发式;Alfred manifest 没有原生 secret 标记。如未来要让 plugin 作者显式声明,可在 manifest 加 `secretvariables: [String]` 自定义字段。
+§6 是"明确不做"的范围声明,优先级独立于本节。
 
 ---
 
