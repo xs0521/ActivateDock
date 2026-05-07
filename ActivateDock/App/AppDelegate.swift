@@ -10,11 +10,13 @@ import Cocoa
 class AppDelegate: NSObject, NSApplicationDelegate {
 
     private var statusItemController: StatusItemController?
+    private var pluginWatcher: PluginWatcher?
     private weak var launcherWindow: NSWindow?
 
     func applicationDidFinishLaunching(_ aNotification: Notification) {
         PluginPaths.ensureExists()
         WorkflowRegistry.shared.reload()
+        startPluginWatcher()
 
         NSApp.setActivationPolicy(.accessory)
         NSApp.activate(ignoringOtherApps: true)
@@ -44,6 +46,15 @@ class AppDelegate: NSObject, NSApplicationDelegate {
 
     func applicationWillTerminate(_ aNotification: Notification) {
         HotKeyManager.shared.unregister()
+        pluginWatcher?.stop()
+    }
+
+    private func startPluginWatcher() {
+        let watcher = PluginWatcher {
+            WorkflowRegistry.shared.reload()
+        }
+        watcher.start(at: PluginPaths.root.path)
+        pluginWatcher = watcher
     }
 
     func applicationSupportsSecureRestorableState(_ app: NSApplication) -> Bool {

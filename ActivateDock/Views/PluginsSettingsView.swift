@@ -20,8 +20,18 @@ final class PluginsSettingsView: NSView, NSTextFieldDelegate {
         translatesAutoresizingMaskIntoConstraints = false
         setupStack()
         rebuild()
+        NotificationCenter.default.addObserver(
+            self,
+            selector: #selector(handleRegistryReload),
+            name: WorkflowRegistry.didReloadNotification,
+            object: nil
+        )
     }
     required init?(coder: NSCoder) { nil }
+
+    deinit { NotificationCenter.default.removeObserver(self) }
+
+    @objc private func handleRegistryReload() { rebuild() }
 
     private func setupStack() {
         stack.orientation = .vertical
@@ -129,31 +139,6 @@ final class PluginsSettingsView: NSView, NSTextFieldDelegate {
         outer.addArrangedSubview(header)
         outer.addArrangedSubview(body)
         return outer
-    }
-
-    private func makeVariableRow(bundleId: String, varKey: String, placeholder: String) -> NSView {
-        let label = NSTextField(labelWithString: varKey)
-        label.font = .systemFont(ofSize: 12)
-        label.alignment = .right
-        label.translatesAutoresizingMaskIntoConstraints = false
-        label.widthAnchor.constraint(equalToConstant: 90).isActive = true
-
-        let field: NSTextField & PluginVariableEditing
-        if PluginVariableSensitivity.isSecret(varKey: varKey) {
-            field = PluginSecureVariableField(bundleId: bundleId, varKey: varKey)
-        } else {
-            field = PluginVariableField(bundleId: bundleId, varKey: varKey)
-        }
-        field.placeholderString = placeholder
-        field.stringValue = store.override(for: bundleId, varKey: varKey) ?? ""
-        field.delegate = self
-        field.widthAnchor.constraint(greaterThanOrEqualToConstant: 240).isActive = true
-
-        let row = NSStackView(views: [label, field])
-        row.orientation = .horizontal
-        row.alignment = .firstBaseline
-        row.spacing = 8
-        return row
     }
 
     private func makeMutedLabel(_ text: String) -> NSTextField {

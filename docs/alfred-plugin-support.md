@@ -15,7 +15,8 @@
 | **B 路径** | ✅ 完成 | `5a4e972` | info.plist 解析 + Workflow Registry |
 | **A 路径** | ✅ 完成 | `433cfd7` | 真 Youdao 插件 + Settings 配置 UI |
 | **C 路径** | ✅ 完成 | `35c084c` | UX 打磨(hint / loading / 错误美化 / 防抖调长) |
-| **F1 + F2** | ✅ 完成 | _待提交_ | 凭证安全(secret → Keychain · NSSecureTextField) |
+| **F1 + F2** | ✅ 完成 | `e4dc3b5` | 凭证安全(secret → Keychain · NSSecureTextField) |
+| **F3 / F4 / TD-5 / F2-eye** | ✅ 完成 | _待提交_ | 热重载 · Settings ScrollView · stderr 实时日志 · secret 可见性切换 |
 
 **已识别但未规划的 follow-up** 见 §1.5。
 
@@ -37,25 +38,30 @@ Swift 输入 "yd hello"
 
 ### 落地的代码
 
-> 截至 commit `433cfd7`(B + A 路径完成)。
+> 截至 commit `e4dc3b5`(B + A + C + F1/F2 完成)。
 
 | 文件 | 角色 | 引入 |
 |---|---|---|
 | `Models/AlfredItem.swift` | Alfred Script Filter JSON Codable | spike |
-| `Models/SearchRow.swift` | `enum SearchRow { case app / case alfred }` 数据源切换 | spike |
+| `Models/SearchRow.swift` | `enum SearchRow { app / alfred / loading / error }` 数据源切换 | spike → C |
 | `Models/AlfredWorkflowManifest.swift` | info.plist Codable 子集(含 description) | B / A |
 | `Models/Workflow.swift` | runtime workflow value type(含 description、shell-quote) | B / A |
 | `Services/AlfredScriptFilterRunner.swift` | Process 包装 + 取消逻辑;接受 Workflow | spike → B |
 | `Services/AlfredWorkflowLoader.swift` | 扫 plugin 目录、解 plist、产 [Workflow] | B |
-| `Services/WorkflowRegistry.swift` | keyword → Workflow 索引 | B |
+| `Services/WorkflowRegistry.swift` | keyword → Workflow 索引(`workflow(forKeyword:)` for hint/防抖) | B → C |
 | `Services/PluginPaths.swift` | `~/Library/Application Support/ActivateDock/Plugins/` 约定 | B |
-| `Services/PluginConfigStore.swift` | UserDefaults override store(per bundleId / per varKey) | A |
-| `Views/SearchResultCell.swift` | subtitle label + alfred configure overload | spike |
-| `Views/PluginVariableField.swift` | 携带 (bundleId, varKey) 的 NSTextField subclass | A |
-| `Views/PluginsSettingsView.swift` | 动态生成的 plugins 配置 UI | A |
+| `Services/PluginConfigStore.swift` | 双轨 store:secret → Keychain,普通 → UserDefaults | A → F1 |
+| `Services/PluginVariableSensitivity.swift` | `isSecret(varKey:)` 启发式分类 | F1 |
+| `Services/Keychain.swift` | `SecItem*` 薄封装(read/write/delete) | F1 |
+| `Views/SearchResultCell.swift` | 多态 cell:app / alfred / loading / error 配置 | spike → C |
+| `Views/PluginVariableField.swift` | 普通 + secure 两个 field 子类 + `PluginVariableEditing` 协议 | A → F2 |
+| `Views/PluginsSettingsView.swift` | 动态生成的 plugins 配置 UI(secret row 用 secure field) | A → F2 |
 | `Controllers/SettingsContentBuilder.swift` | 加 plugins section | A |
 | `Controllers/SettingsWindowController.swift` | 持有 PluginsSettingsView,窗口尺寸 480×520 | A |
-| `Controllers/ViewController*.swift` | 关键词路由(查 registry)+ 数据源 dispatch + Enter 处理 | spike → B |
+| `Controllers/ViewController+Search.swift` | 输入路由 + 防抖(plugin keyword 250ms,其余 120ms) | spike → C |
+| `Controllers/ViewController+SearchAlfred.swift` | runAlfred + 错误展示映射(从 +Search 抽出) | C |
+| `Controllers/ViewController+SearchHint.swift` | inline hint(plugin keyword 走 "输入查询内容") | spike → C |
+| `Controllers/ViewController+SearchResults.swift` | table 渲染 dispatch(含 loading / error) | spike → C |
 | `App/AppDelegate.swift` | 启动时 `PluginPaths.ensureExists()` + `Registry.reload()` | B |
 | `spike/alfred-stub.js` | 最简 Alfred Script Filter 参考脚本 | spike |
 
@@ -72,9 +78,10 @@ Swift 输入 "yd hello"
 2. ✅ ~~单 runner 实例,无 plugin 注册表~~ — B 路径加 WorkflowRegistry。
 3. ✅ ~~没有 info.plist 解析~~ — B 路径加 AlfredWorkflowLoader。
 4. ✅ ~~icon 路径相对解析未做~~ — B 路径在 `Workflow.resolvingIconPaths` 里 resolve。
-5. ⏳ **stderr 攒批读取** → 调试真插件慢,看不到实时日志。(C 后仍未做,优先级低)
+5. ✅ ~~stderr 攒批读取~~ — `AlfredScriptFilterRunner` 改用 `readabilityHandler`,
+   每收到一块 stderr 就 `NSLog("[plugin:<bundleId>] ...")`,terminationHandler 收尾时 drain 残余数据 + 拆掉 handler。
 6. ✅ ~~错误 UX 简陋~~ — C 路径加专用 error cell(红色 SF symbol + 红色标题 + 截断细节)。
-7. ✅ ~~没有输入提示~~ — C 路径让 plugin keyword 复用既有 hint 通道,文案取自 manifest description。
+7. ✅ ~~没有输入提示~~ — C 路径让 plugin keyword 复用既有 hint 通道,统一 "输入查询内容"(manifest description 太长不适合 inline,留给 Settings UI 用)。
 
 ### 1.5 已识别的 follow-up(未规划进任何路径)
 
@@ -84,8 +91,8 @@ A 路径完成后衍生的工程性事项,优先级跟 C 类似,但属于"打磨
 |---|---|---|---|
 | F1 | ✅ secret 字段从 UserDefaults 迁到 Keychain | 凭证安全 | 中 — 见下 |
 | F2 | ✅ secret 字段改用 `NSSecureTextField` | 配置 UI 隐私 | 低 — 见下 |
-| F3 | `WorkflowRegistry` **没有热重载** → 改 plist 要重启 app(改 store 不需要) | 开发体验 | 中(FileWatcher 监听 Plugins 目录) |
-| F4 | Settings 窗口**没有 scrollview** → plugin 多了内容会溢出 | UI 健壮性 | 低(把 PluginsSettingsView 包进 NSScrollView) |
+| F3 | ✅ `WorkflowRegistry` 加 FSEventStream 监听,装/改/删插件后自动 reload | 开发体验 | 中 |
+| F4 | ✅ Settings 窗口外层包了 `NSScrollView`,plugin 多了不再溢出 | UI 健壮性 | 低 |
 
 **F1 + F2 实际交付**:
 - `Services/Keychain.swift` — `SecItem*` 薄封装,service =
@@ -103,10 +110,11 @@ A 路径完成后衍生的工程性事项,优先级跟 C 类似,但属于"打磨
 - `Views/PluginsSettingsView.swift` — `makeVariableRow` 按 `isSecret` 分支选
   field 类型,delegate 走协议而不是具体类。
 
-**未做(已知)**:可见性切换按钮(eye toggle)。masked 后用户重新校验只能靠
-重新粘贴。如确有需要再加,做成 wrapper view 较干净。
-
-**剩余 follow-up**:F3(热重载) / F4(Settings 加 scrollview)。
+**F2-eye(可见性切换)** ✅:`Views/PluginSecretVariableRow.swift` 是个 NSView 包
+裹同坐标重叠的 `PluginSecureVariableField` + `PluginVariableField` + 一个 SF symbol
+眼睛按钮(`eye` / `eye.slash`),点击同步两边的 stringValue + 切换 `isHidden` +
+迁移 firstResponder 到当前 active field。delegate / placeholder / stringValue
+都按 active 字段透传,既有的 `controlTextDidEndEditing` pipeline 不用改。
 
 ---
 
@@ -177,15 +185,17 @@ A 路径完成后衍生的工程性事项,优先级跟 C 类似,但属于"打磨
 
 ## 3. 执行顺序与理由
 
-**原计划:B → A → C**(实际 B、A 已交付,C 待做)
+**原计划:B → A → C**,最终 B / A / C / F1+F2 全交付。
 
 | 顺序 | 理由 | 实际 |
 |---|---|---|
 | **B 先** | 架构验证比单点验证更有价值。先把"通用性"打通,A 就成顺路的事。 | ✅ commit `5a4e972` |
 | **A 跟在 B 后** | B 完成后,跑真 Youdao = "把改过的 plugin 放进 plugin 目录 + 配 env",几乎零工作量。 | ✅ commit `433cfd7`(顺手扩展了 Settings UI) |
-| **C 最后** | UX 容易反复,在架构稳定前打磨容易做无用功。 | ✅ _待提交_ |
+| **C 最后** | UX 容易反复,在架构稳定前打磨容易做无用功。 | ✅ commit `35c084c` |
+| **F1 + F2 (顺手加固)** | C 完成后顺势把 secret 凭证安全收尾。 | ✅ commit `e4dc3b5` |
+| **F3 / F4 / TD-5 / F2-eye** | F1+F2 之后用户希望把 §1.5 列出的全部 follow-up 一并清掉。 | ✅ _待提交_ |
 
-**当前候选**:F3(热重载) / F4(Settings ScrollView)。
+**当前候选**:四个 follow-up 全部交付,剩下的健壮性/范围议题见 §5。
 
 ---
 
@@ -251,7 +261,21 @@ A 路径完成后衍生的工程性事项,优先级跟 C 类似,但属于"打磨
 
 ---
 
-## 5. 不在范围 / 不做的事
+## 5. 未做事项汇总(写给"下一段时间想做点什么"的自己)
+
+§1.5 列出的 4 条 follow-up(F3 / F4 / TD-5 / F2-eye)已全部交付,剩下的是
+更长尾的健壮性 / 体验候选,尚未规划进任何路径。
+
+**一致性 / 健壮性候选**(尚未规划成正式条目):
+
+- 多 keyword 同名时 registry 只保留首个 + NSLog,UI 上没有提示;装多个冲突插件无法察觉。
+- 插件目录结构错误(缺 plist / plist 解析失败)只 NSLog skip,Settings 看不到"加载失败"列表。
+- `Workflow.scriptCommand` 走 `/bin/sh -c`,`{query}` 已 shell-quote,但其他 manifest 字段(env value 等)未审计 — 当前威胁面低(用户自己装的插件),但记录在案。
+- `PluginVariableSensitivity.isSecret` 是名字启发式;Alfred manifest 没有原生 secret 标记。如未来要让 plugin 作者显式声明,可在 manifest 加 `secretvariables: [String]` 自定义字段。
+
+---
+
+## 6. 不在范围 / 不做的事
 
 为了控制 scope,以下 Alfred 特性不实现:
 
@@ -266,7 +290,7 @@ A 路径完成后衍生的工程性事项,优先级跟 C 类似,但属于"打磨
 
 ---
 
-## 6. 法律 / 品牌
+## 7. 法律 / 品牌
 
 - 文档措辞使用 "**兼容 Alfred Script Filter 协议**",**不**说"支持 Alfred 插件",
   避免暗示官方关联或转载 Alfred 商标。

@@ -52,6 +52,21 @@ final class AlfredScriptFilterRunner {
         process.standardOutput = outPipe
         process.standardError = errPipe
 
+        let stderrLock = NSLock()
+        var stderrBuffer = Data()
+        let logTag = "[plugin:\(workflow.bundleId)]"
+        errPipe.fileHandleForReading.readabilityHandler = { handle in
+            let chunk = handle.availableData
+            guard !chunk.isEmpty else { return }
+            stderrLock.lock()
+            stderrBuffer.append(chunk)
+            stderrLock.unlock()
+            if let text = String(data: chunk, encoding: .utf8) {
+                let trimmed = text.trimmingCharacters(in: .whitespacesAndNewlines)
+                if !trimmed.isEmpty { NSLog("\(logTag) \(trimmed)") }
+            }
+        }
+
         process.terminationHandler = { [weak self] proc in
             guard let self else { return }
 
@@ -60,9 +75,14 @@ final class AlfredScriptFilterRunner {
             if isLatest { self.inflight = nil }
             self.lock.unlock()
 
+            errPipe.fileHandleForReading.readabilityHandler = nil
+            let trailingErr = errPipe.fileHandleForReading.availableData
+            stderrLock.lock()
+            if !trailingErr.isEmpty { stderrBuffer.append(trailingErr) }
+            let errString = String(data: stderrBuffer, encoding: .utf8) ?? ""
+            stderrLock.unlock()
+
             let outData = outPipe.fileHandleForReading.readDataToEndOfFile()
-            let errData = errPipe.fileHandleForReading.readDataToEndOfFile()
-            let errString = String(data: errData, encoding: .utf8) ?? ""
 
             guard isLatest else {
                 DispatchQueue.main.async { completion(.failure(.cancelled)) }

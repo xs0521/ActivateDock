@@ -11,6 +11,7 @@ import Foundation
 
 final class WorkflowRegistry {
     static let shared = WorkflowRegistry()
+    static let didReloadNotification = Notification.Name("WorkflowRegistry.didReload")
 
     private var byKeyword: [String: Workflow] = [:]
 
@@ -29,6 +30,7 @@ final class WorkflowRegistry {
         }
         byKeyword = index
         NSLog("[WorkflowRegistry] loaded \(byKeyword.count) workflow(s): \(byKeyword.keys.sorted())")
+        NotificationCenter.default.post(name: Self.didReloadNotification, object: self)
     }
 
     func workflow(forKeyword keyword: String) -> Workflow? {
