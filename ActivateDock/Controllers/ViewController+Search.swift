@@ -44,8 +44,8 @@ extension ViewController: NSSearchFieldDelegate {
         searchScrollView.isHidden = false
         scrollView.isHidden = true
 
-        if let alfredQuery = parseAlfredQuery(q) {
-            runAlfred(query: alfredQuery)
+        if let match = WorkflowRegistry.shared.match(input: q) {
+            runAlfred(workflow: match.workflow, query: match.query)
             return
         }
 
@@ -59,19 +59,13 @@ extension ViewController: NSSearchFieldDelegate {
         }
     }
 
-    private func parseAlfredQuery(_ input: String) -> String? {
-        let prefix = "yd "
-        guard input.lowercased().hasPrefix(prefix) else { return nil }
-        let q = input.dropFirst(prefix.count).trimmingCharacters(in: .whitespacesAndNewlines)
-        return q.isEmpty ? nil : q
-    }
-
-    private func runAlfred(query: String) {
-        alfredRunner.run(query: query) { [weak self] result in
+    private func runAlfred(workflow: Workflow, query: String) {
+        alfredRunner.run(workflow: workflow, query: query) { [weak self] result in
             guard let self else { return }
             switch result {
             case .success(let items):
-                self.searchResults = items.map(SearchRow.alfred)
+                let resolved = workflow.resolvingIconPaths(in: items)
+                self.searchResults = resolved.map(SearchRow.alfred)
                 self.searchResultsTable.reloadData()
                 if !self.searchResults.isEmpty {
                     self.searchResultsTable.selectRowIndexes([0], byExtendingSelection: false)

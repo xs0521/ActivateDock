@@ -28,13 +28,7 @@ final class ViewController: NSViewController {
     var searchResults: [SearchRow] = []
     var searchDebounceWorkItem: DispatchWorkItem?
 
-    lazy var alfredRunner: AlfredScriptFilterRunner = {
-        let projectRoot = "/Users/luo/Documents/iOS/ActivateDock"
-        return AlfredScriptFilterRunner(
-            runtimePath: "\(projectRoot)/txiki-macos-arm64/tjs",
-            scriptPath: "\(projectRoot)/spike/alfred-stub.js"
-        )
-    }()
+    let alfredRunner = AlfredScriptFilterRunner()
 
     var cardDragOverlay: NSImageView?
     var cardDragSourceIndex: Int?

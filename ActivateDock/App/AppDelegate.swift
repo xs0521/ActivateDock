@@ -13,6 +13,9 @@ class AppDelegate: NSObject, NSApplicationDelegate {
     private weak var launcherWindow: NSWindow?
 
     func applicationDidFinishLaunching(_ aNotification: Notification) {
+        PluginPaths.ensureExists()
+        WorkflowRegistry.shared.reload()
+
         NSApp.setActivationPolicy(.accessory)
         NSApp.activate(ignoringOtherApps: true)
         launcherWindow = NSApp.windows.first

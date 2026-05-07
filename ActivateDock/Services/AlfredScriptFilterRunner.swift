@@ -6,6 +6,9 @@
 //  `{ "items": [...] }` to stdout) and decodes the result. Cancels any
 //  prior in-flight invocation when a new one arrives.
 //
+//  The actual command is taken from a Workflow value (loaded from a
+//  plugin's info.plist). Runner itself has no per-plugin state.
+//
 
 import Foundation
 
@@ -17,22 +20,13 @@ enum AlfredRunnerError: Error {
 }
 
 final class AlfredScriptFilterRunner {
-    let runtimePath: String
-    let scriptPath: String
-    let workingDirectory: String?
 
     private let lock = NSLock()
     private var inflight: Process?
     private var requestSeq: Int = 0
 
-    init(runtimePath: String, scriptPath: String, workingDirectory: String? = nil) {
-        self.runtimePath = runtimePath
-        self.scriptPath = scriptPath
-        self.workingDirectory = workingDirectory
-    }
-
-    func run(query: String,
-             env: [String: String] = [:],
+    func run(workflow: Workflow,
+             query: String,
              completion: @escaping (Result<[AlfredItem], AlfredRunnerError>) -> Void) {
 
         lock.lock()
@@ -43,14 +37,12 @@ final class AlfredScriptFilterRunner {
         inflight = process
         lock.unlock()
 
-        process.executableURL = URL(fileURLWithPath: runtimePath)
-        process.arguments = ["run", scriptPath, query]
-        if let cwd = workingDirectory {
-            process.currentDirectoryURL = URL(fileURLWithPath: cwd)
-        }
+        process.executableURL = URL(fileURLWithPath: "/bin/sh")
+        process.arguments = ["-c", workflow.substitutedCommand(query: query)]
+        process.currentDirectoryURL = workflow.directory
 
         var mergedEnv = ProcessInfo.processInfo.environment
-        for (k, v) in env { mergedEnv[k] = v }
+        for (k, v) in workflow.variables { mergedEnv[k] = v }
         process.environment = mergedEnv
 
         let outPipe = Pipe()
