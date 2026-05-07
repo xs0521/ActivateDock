@@ -93,8 +93,11 @@ final class SearchResultCell: NSView {
 
     func configure(alfredItem item: AlfredItem) {
         resetState()
+        let isValid = item.valid != false
         iconView.image = Self.resolveAlfredIcon(item.icon?.path) ?? Self.fallbackAlfredIcon
+        iconView.alphaValue = isValid ? 1.0 : 0.4
         titleLabel.stringValue = item.title
+        titleLabel.textColor = isValid ? .labelColor : .tertiaryLabelColor
         let sub = item.subtitle ?? ""
         subtitleLabel.stringValue = sub
         subtitleLabel.isHidden = sub.isEmpty
@@ -124,6 +127,7 @@ final class SearchResultCell: NSView {
         spinner.isHidden = true
         iconView.image = nil
         iconView.contentTintColor = nil
+        iconView.alphaValue = 1.0
         titleLabel.textColor = .labelColor
         titleLabel.stringValue = ""
         subtitleLabel.stringValue = ""

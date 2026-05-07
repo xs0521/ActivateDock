@@ -60,8 +60,11 @@ extension ViewController: NSWindowDelegate {
         let suffix = text[text.index(after: space)...]
         guard suffix.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty else { return nil }
         let keyword = String(text[..<space])
-        guard WorkflowRegistry.shared.workflow(forKeyword: keyword) != nil else { return nil }
-        return "输入查询内容"
+        guard let graph = WorkflowRegistry.shared.graph(forKeyword: keyword),
+              let ep = WorkflowRegistry.shared.entrypoint(forKeyword: keyword),
+              let node = graph.nodes[ep.nodeUID]
+        else { return nil }
+        return node.nodeType == "input.keyword" ? "按回车执行" : "输入查询内容"
     }
 
     func windowWillReturnFieldEditor(_ sender: NSWindow, to client: Any?) -> Any? {

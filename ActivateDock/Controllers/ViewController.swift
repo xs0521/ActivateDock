@@ -28,7 +28,7 @@ final class ViewController: NSViewController {
     var searchResults: [SearchRow] = []
     var searchDebounceWorkItem: DispatchWorkItem?
 
-    let alfredRunner = AlfredScriptFilterRunner()
+    let executor = WorkflowExecutor()
 
     var cardDragOverlay: NSImageView?
     var cardDragSourceIndex: Int?

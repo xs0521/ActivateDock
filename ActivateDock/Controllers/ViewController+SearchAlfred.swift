@@ -2,69 +2,81 @@
 //  ViewController+SearchAlfred.swift
 //  ActivateDock
 //
-//  Plugin (Alfred Script Filter) execution path: kicks off the runner,
-//  shows a loading row while the subprocess is running, and renders
-//  failures as a polished error row.
+//  Alfred plugin execution path. Hands the entry node to WorkflowExecutor
+//  and translates UIIntent values into table-view updates. The executor
+//  manages cancellation and the process lifecycle; this layer only deals
+//  with UI state.
 //
 
 import Cocoa
 
 extension ViewController {
 
-    func runAlfred(workflow: Workflow, query: String) {
-        searchResults = [.loading]
-        searchResultsTable.reloadData()
-        searchResultsTable.deselectAll(nil)
-
-        alfredRunner.run(workflow: workflow, query: query) { [weak self] result in
-            guard let self else { return }
-            switch result {
-            case .success(let items):
-                let resolved = workflow.resolvingIconPaths(in: items)
-                self.searchResults = resolved.map(SearchRow.alfred)
-                self.searchResultsTable.reloadData()
-                if !self.searchResults.isEmpty {
-                    self.searchResultsTable.selectRowIndexes([0], byExtendingSelection: false)
-                    self.searchResultsTable.scrollRowToVisible(0)
-                }
-            case .failure(.cancelled):
-                return
-            case .failure(let err):
-                let (title, detail) = Self.errorPresentation(for: err, workflow: workflow)
-                self.searchResults = [.error(title: title, detail: detail)]
-                self.searchResultsTable.reloadData()
-            }
+    func runAlfred(graph: WorkflowGraph,
+                   entrypoint: WorkflowGraph.Entrypoint,
+                   query: String) {
+        guard let node = graph.nodes[entrypoint.nodeUID] else {
+            let msg = "entry node \(entrypoint.nodeUID) not found"
+            searchResults = [.error(title: "\(graph.name) · 内部错误", detail: msg)]
+            searchResultsTable.reloadData()
+            return
+        }
+        let vars = PluginConfigStore.shared.mergedVariables(for: graph)
+        executor.enter(graph: graph, entry: node, query: query, variables: vars) { [weak self] intent in
+            self?.handleUIIntent(intent, graphName: graph.name)
         }
     }
 
-    private static func errorPresentation(for err: AlfredRunnerError,
-                                          workflow: Workflow) -> (title: String, detail: String) {
-        switch err {
-        case .launchFailed(let e):
-            return ("\(workflow.name) · 启动失败", e.localizedDescription)
-        case .nonZeroExit(let code, let stderr):
-            if let hint = permissionHint(stderr: stderr) {
-                return ("\(workflow.name) · 需要权限", hint)
+    private func handleUIIntent(_ intent: UIIntent, graphName: String) {
+        switch intent {
+        case .showLoading:
+            searchResults = [.loading]
+            searchResultsTable.reloadData()
+            searchResultsTable.deselectAll(nil)
+
+        case .showItems(let items):
+            searchResults = items.map(SearchRow.alfred)
+            searchResultsTable.reloadData()
+            if !searchResults.isEmpty {
+                searchResultsTable.selectRowIndexes([0], byExtendingSelection: false)
+                searchResultsTable.scrollRowToVisible(0)
             }
-            let firstLine = stderr
-                .split(whereSeparator: \.isNewline)
-                .first
-                .map(String.init) ?? ""
+
+        case .showError(let err):
+            let (title, detail) = Self.errorPresentation(for: err, graphName: graphName)
+            searchResults = [.error(title: title, detail: detail)]
+            searchResultsTable.reloadData()
+
+        case .dismissAndPerform:
+            searchField.stringValue = ""
+            updateForSearchText("")
+            view.window?.orderOut(nil)
+        }
+    }
+
+    private static func errorPresentation(for err: WorkflowError,
+                                          graphName: String) -> (title: String, detail: String) {
+        switch err.kind {
+        case .launchFailed(let e):
+            return ("\(graphName) · 启动失败", e.localizedDescription)
+        case .nodeFailed(let stderr, let code):
+            if let hint = permissionHint(stderr: stderr) {
+                return ("\(graphName) · 需要权限", hint)
+            }
+            let firstLine = stderr.split(whereSeparator: \.isNewline).first.map(String.init) ?? ""
             let trimmed = firstLine.trimmingCharacters(in: .whitespaces)
             let detail = trimmed.isEmpty ? "exit code \(code)" : "exit \(code): \(trimmed.prefix(180))"
-            return ("\(workflow.name) · 运行错误", detail)
-        case .decodeFailed(_, let raw):
+            return ("\(graphName) · 运行错误", detail)
+        case .decodeFailed(let raw, _):
             let snippet = raw.trimmingCharacters(in: .whitespacesAndNewlines).prefix(180)
-            return ("\(workflow.name) · 输出解析失败", String(snippet))
-        case .cancelled:
-            return ("", "")
+            return ("\(graphName) · 输出解析失败", String(snippet))
+        case .missingNode(let uid):
+            return ("\(graphName) · 内部错误", "找不到节点 \(uid)")
+        case .unsupportedNodeType(let type):
+            return ("\(graphName) · 不支持的节点类型", type)
         }
     }
 
-    // Maps known macOS TCC error fingerprints to an actionable hint.
-    // TCC denials surface through stderr text (the OS doesn't give us
-    // a typed errno), so we keyword-match. The full stderr is still in
-    // NSLog under the [plugin:<bundleId>] tag for power-user debugging.
     private static func permissionHint(stderr: String) -> String? {
         let lower = stderr.lowercased()
         if lower.contains("authorization denied") ||

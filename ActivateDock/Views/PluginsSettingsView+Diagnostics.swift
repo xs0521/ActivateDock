@@ -44,8 +44,7 @@ extension PluginsSettingsView {
     }
 
     private func conflictDetail(_ c: PluginKeywordConflict) -> String {
-        let dropped = c.dropped.map { $0.bundleId }.joined(separator: ", ")
-        return "kept \(c.kept.bundleId); ignored \(dropped)"
+        "kept \(c.keptBundleId); ignored \(c.droppedBundleIds.joined(separator: ", "))"
     }
 
     private func makeDiagnosticsHeader(failureCount: Int, conflictCount: Int) -> NSView {

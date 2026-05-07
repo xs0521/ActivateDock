@@ -3,12 +3,13 @@
 //  ActivateDock
 //
 //  Walks the plugin install root, parses each subdirectory's info.plist,
-//  and yields a flat list of Workflow values. One Alfred plugin can
-//  contribute multiple Script Filters; each becomes its own Workflow.
+//  and yields a list of WorkflowGraph values. One Alfred plugin becomes
+//  one graph; each scriptfilter object inside it becomes a ScriptFilterNode
+//  with its own entry in the graph's nodes dict and entrypoints list.
 //
-//  Bad plugins are recorded as PluginLoadFailure entries on the
-//  returned LoadResult so WorkflowRegistry can surface them in the
-//  Settings UI — never thrown out of loadAll().
+//  Bad plugins are recorded as PluginLoadFailure entries on the returned
+//  LoadResult so WorkflowRegistry can surface them in the Settings UI —
+//  never thrown out of loadAll().
 //
 
 import Foundation
@@ -16,11 +17,11 @@ import Foundation
 enum AlfredWorkflowLoader {
 
     struct LoadResult {
-        var workflows: [Workflow] = []
+        var graphs: [WorkflowGraph] = []
         var failures: [PluginLoadFailure] = []
 
         mutating func merge(_ other: LoadResult) {
-            workflows.append(contentsOf: other.workflows)
+            graphs.append(contentsOf: other.graphs)
             failures.append(contentsOf: other.failures)
         }
     }
@@ -43,12 +44,12 @@ enum AlfredWorkflowLoader {
     }
 
     private static func loadOne(at directory: URL) -> LoadResult {
+        var result = LoadResult()
         let plistURL = directory.appendingPathComponent("info.plist")
         guard let data = try? Data(contentsOf: plistURL) else {
             NSLog("[AlfredWorkflowLoader] no info.plist in \(directory.path), skipping")
-            return LoadResult(workflows: [], failures: [
-                PluginLoadFailure(directory: directory, reason: .missingInfoPlist)
-            ])
+            result.failures.append(PluginLoadFailure(directory: directory, reason: .missingInfoPlist))
+            return result
         }
 
         let manifest: AlfredWorkflowManifest
@@ -57,59 +58,58 @@ enum AlfredWorkflowLoader {
         } catch {
             let detail = (error as NSError).localizedDescription
             NSLog("[AlfredWorkflowLoader] decode failed for \(directory.path): \(error)")
-            return LoadResult(workflows: [], failures: [
-                PluginLoadFailure(directory: directory, reason: .decodeFailed(detail: detail))
-            ])
+            result.failures.append(PluginLoadFailure(directory: directory,
+                                                      reason: .decodeFailed(detail: detail)))
+            return result
         }
 
-        guard let objects = manifest.objects else { return LoadResult() }
-        let bundleId = manifest.bundleid ?? directory.lastPathComponent
-        let displayName = manifest.name ?? directory.lastPathComponent
-        let description = manifest.description?.trimmingCharacters(in: .whitespacesAndNewlines)
-        let effectiveVariables = mergedVariables(
-            userConfig: manifest.userconfigurationconfig,
-            topLevel: manifest.variables
-        )
+        guard let objects = manifest.objects else { return result }
+        let bundleId      = manifest.bundleid ?? directory.lastPathComponent
+        let displayName   = manifest.name ?? directory.lastPathComponent
+        let description   = manifest.description?.trimmingCharacters(in: .whitespacesAndNewlines)
+        let effectiveVars = mergedVariables(userConfig: manifest.userconfigurationconfig,
+                                            topLevel: manifest.variables)
         let declaredSecrets = Set(manifest.secretvariables ?? [])
 
-        var result = LoadResult()
-        for obj in objects where obj.isScriptFilter {
-            guard let cfg = obj.config,
-                  let rawKeyword = cfg.keyword?.trimmingCharacters(in: .whitespaces),
-                  !rawKeyword.isEmpty,
-                  let rawScript = cfg.script?.trimmingCharacters(in: .whitespacesAndNewlines),
-                  !rawScript.isEmpty
-            else {
-                NSLog("[AlfredWorkflowLoader] scriptfilter in \(directory.lastPathComponent) missing keyword or script, skipping")
-                result.failures.append(PluginLoadFailure(
-                    directory: directory,
-                    reason: .missingScriptFilterFields(objectUid: obj.uid)
-                ))
+        var nodes: [String: any WorkflowNode] = [:]
+        var entrypoints: [WorkflowGraph.Entrypoint] = []
+
+        for obj in objects {
+            guard let node = buildNode(from: obj, bundleId: bundleId, name: displayName,
+                                        effectiveVars: effectiveVars) else {
+                if obj.isScriptFilter {
+                    NSLog("[AlfredWorkflowLoader] scriptfilter in \(directory.lastPathComponent) missing script, skipping")
+                    result.failures.append(PluginLoadFailure(directory: directory,
+                                                              reason: .missingScriptFilterFields(objectUid: obj.uid)))
+                }
                 continue
             }
-            let keyword = expand(rawKeyword, with: effectiveVariables)
-                .trimmingCharacters(in: .whitespaces)
-            guard !keyword.isEmpty else {
-                NSLog("[AlfredWorkflowLoader] scriptfilter in \(directory.lastPathComponent) keyword '\(rawKeyword)' resolved to empty, skipping")
-                result.failures.append(PluginLoadFailure(
-                    directory: directory,
-                    reason: .missingScriptFilterFields(objectUid: obj.uid)
-                ))
+            nodes[node.uid] = node
+
+            guard (obj.isScriptFilter || obj.isKeywordInput || obj.isListFilterInput),
+                  let rawKeyword = obj.config?.keyword?.trimmingCharacters(in: .whitespaces),
+                  !rawKeyword.isEmpty else {
+                if obj.isScriptFilter {
+                    NSLog("[AlfredWorkflowLoader] scriptfilter in \(directory.lastPathComponent) missing keyword, skipping entrypoint")
+                    result.failures.append(PluginLoadFailure(directory: directory,
+                                                              reason: .missingScriptFilterFields(objectUid: obj.uid)))
+                }
                 continue
             }
-            let script = expand(rawScript, with: effectiveVariables)
-            result.workflows.append(Workflow(
-                bundleId: bundleId,
-                name: displayName,
-                description: (description?.isEmpty ?? true) ? nil : description,
-                directory: directory,
-                keyword: keyword,
-                scriptCommand: script,
-                scriptLanguageType: cfg.type,
-                variables: effectiveVariables,
-                declaredSecretVariables: declaredSecrets
-            ))
+            let keyword = expand(rawKeyword, with: effectiveVars).trimmingCharacters(in: .whitespaces)
+            guard !keyword.isEmpty else { continue }
+            entrypoints.append(WorkflowGraph.Entrypoint(keyword: keyword, nodeUID: node.uid))
         }
+
+        guard !entrypoints.isEmpty else { return result }
+        result.graphs.append(WorkflowGraph(
+            bundleId: bundleId, name: displayName,
+            description: (description?.isEmpty ?? true) ? nil : description,
+            pluginDirectory: directory, nodes: nodes,
+            edges: buildEdges(from: manifest),
+            entrypoints: entrypoints, variables: effectiveVars,
+            declaredSecretVariables: declaredSecrets
+        ))
         return result
     }
 
@@ -127,13 +127,11 @@ enum AlfredWorkflowLoader {
                 result[key] = isWhole ? String(Int(num)) : String(num)
             }
         }
-        // top-level `variables` is the user/installer's last word and
-        // overrides userconfig defaults when both define the same key.
         for (k, v) in topLevel ?? [:] { result[k] = v }
         return result
     }
 
-    private static func expand(_ template: String, with vars: [String: String]) -> String {
+    static func expand(_ template: String, with vars: [String: String]) -> String {
         guard template.contains("{var:") else { return template }
         let pattern = #"\{var:([A-Za-z_][A-Za-z0-9_]*)\}"#
         guard let regex = try? NSRegularExpression(pattern: pattern) else { return template }
@@ -142,8 +140,7 @@ enum AlfredWorkflowLoader {
         var result = template
         for match in matches.reversed() {
             let name = ns.substring(with: match.range(at: 1))
-            let replacement = vars[name] ?? ""
-            result = (result as NSString).replacingCharacters(in: match.range, with: replacement)
+            result = (result as NSString).replacingCharacters(in: match.range, with: vars[name] ?? "")
         }
         return result
     }

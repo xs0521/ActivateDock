@@ -4,9 +4,9 @@
 > 的第三方插件(占 Alfred 生态绝大多数:翻译/词典/汇率/搜索类)。
 > 不追求 Alfred 全功能兼容。
 >
-> 架构层面的下一阶段(graph runtime · 多节点类型 / connections / mods)
-> 在 [workflow-graph-runtime.md](workflow-graph-runtime.md) 单独立项。
-> 本文是"已交付"账本,新文是"下一步"设计。
+> 架构层面的重构(graph runtime · 多节点类型 / connections / mods)
+> 在 [workflow-graph-runtime.md](workflow-graph-runtime.md) 单独立项,**已全部完成**。
+> 本文是"已交付"账本;graph runtime 的详细设计与落地进度见那份文档。
 
 ---
 
@@ -26,7 +26,8 @@
 | **F9 ~ F16(post-F8)** | ✅ 完成 | `bf440d5` | `{var:NAME}` 模板展开 + `userconfigurationconfig` 默认值 · 脚本语言 dispatch(shebang / `type`)· stdout 持续 drain · Settings 导入按钮 + PluginImporter · `keyword + 空格` 立即触发 · URL arg 走 NSWorkspace · TCC 错误 → 权限指引 |
 | **打包工具** | ✅ 完成 | `672645c` | `build.sh` 一键 Release + zip,可选 `--install` 到 `/Applications` |
 | **URL/复制 fallback** | ✅ 完成 | `6a471ef` | scriptfilter 选中后 Enter:URL 走 NSWorkspace,非 URL 复制 |
-| **Graph runtime 立项** | 📋 设计中 | `cb7f236` | [workflow-graph-runtime.md](workflow-graph-runtime.md):多节点类型 / connections / mods |
+| **Graph runtime 立项** | ✅ 完成 | `cb7f236` | [workflow-graph-runtime.md](workflow-graph-runtime.md):多节点类型 / connections / mods |
+| **Graph runtime 全部完成** | ✅ 完成 | — | WorkflowNode/Graph/Executor · ScriptFilterNode · mods路由 · connections解析 · action.script/openurl/copy · utility.junction · input.keyword · input.listfilter · 旧 Workflow/Runner 已删除 |
 
 **已识别但未规划的 follow-up** 见 §1.5。post-F8 的工作以 F9–F16 形式补登。
 

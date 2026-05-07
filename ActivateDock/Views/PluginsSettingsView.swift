@@ -79,30 +79,15 @@ final class PluginsSettingsView: NSView, NSTextFieldDelegate {
     }
 
     private func pluginGroups() -> [PluginGroup] {
-        var byBundle: [String: Int] = [:]
-        var groups: [PluginGroup] = []
-        for w in WorkflowRegistry.shared.allWorkflows {
-            if let idx = byBundle[w.bundleId] {
-                let g = groups[idx]
-                groups[idx] = PluginGroup(
-                    bundleId: g.bundleId,
-                    name: g.name,
-                    description: g.description,
-                    keywords: g.keywords + [w.keyword],
-                    variables: g.variables
-                )
-            } else {
-                byBundle[w.bundleId] = groups.count
-                groups.append(PluginGroup(
-                    bundleId: w.bundleId,
-                    name: w.name,
-                    description: w.description,
-                    keywords: [w.keyword],
-                    variables: w.variables
-                ))
-            }
+        WorkflowRegistry.shared.allGraphs.map { graph in
+            PluginGroup(
+                bundleId: graph.bundleId,
+                name: graph.name,
+                description: graph.description,
+                keywords: graph.entrypoints.map(\.keyword).sorted(),
+                variables: graph.variables
+            )
         }
-        return groups
     }
 
     private func makePluginGroup(_ group: PluginGroup) -> NSView {

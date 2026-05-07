@@ -31,7 +31,7 @@ extension ViewController: NSSearchFieldDelegate {
         updateSearchHint(for: text)
         let q = text.trimmingCharacters(in: .whitespacesAndNewlines)
         if q.isEmpty {
-            alfredRunner.cancel()
+            executor.cancelCurrent()
             searchResults = []
             searchResultsTable.reloadData()
             searchBackground.isHidden = true
@@ -49,11 +49,11 @@ extension ViewController: NSSearchFieldDelegate {
         // query="" — Alfred fires the script filter on bare keyword+
         // space and plugins can render their initial result set.
         if let match = WorkflowRegistry.shared.match(input: text) {
-            runAlfred(workflow: match.workflow, query: match.query)
+            runAlfred(graph: match.graph, entrypoint: match.entrypoint, query: match.query)
             return
         }
 
-        alfredRunner.cancel()
+        executor.cancelCurrent()
         let apps = InstalledAppsCatalog.search(q, in: installedApps)
         searchResults = apps.map(SearchRow.app)
         searchResultsTable.reloadData()
@@ -83,7 +83,7 @@ extension ViewController: NSSearchFieldDelegate {
     private static func debounceDelay(for text: String) -> TimeInterval {
         guard let space = text.firstIndex(of: " ") else { return 0.12 }
         let keyword = String(text[..<space])
-        return WorkflowRegistry.shared.workflow(forKeyword: keyword) != nil ? 0.25 : 0.12
+        return WorkflowRegistry.shared.graph(forKeyword: keyword) != nil ? 0.25 : 0.12
     }
 
     func control(_ control: NSControl, textView: NSTextView, doCommandBy commandSelector: Selector) -> Bool {
@@ -149,23 +149,29 @@ extension ViewController: NSSearchFieldDelegate {
                                                configuration: NSWorkspace.OpenConfiguration(),
                                                completionHandler: nil)
         case .alfred(let item):
-            handleAlfredArg(item.arg)
+            guard item.valid != false else { return }
+            let activeMods = NSEvent.modifierFlags.alfredRelevant
+            let mod = item.mods?.first(where: { key, _ in
+                NSEvent.ModifierFlags.fromAlfredModKey(key) == activeMods
+            })?.value
+            guard mod?.valid != false else { return }
+            // Try graph edge first; executor emits dismissAndPerform and returns true.
+            if executor.activate(item: item, modifiers: activeMods) { return }
+            // No graph edge — fall back to URL-open/copy.
+            let arg = mod?.arg ?? item.arg
+            guard let arg, !arg.isEmpty else { return }
+            if let url = Self.openableURL(from: arg) {
+                NSWorkspace.shared.open(url)
+            } else {
+                NSPasteboard.general.clearContents()
+                NSPasteboard.general.setString(arg, forType: .string)
+            }
         case .loading, .error:
             return
         }
         searchField.stringValue = ""
         updateForSearchText("")
         view.window?.orderOut(nil)
-    }
-
-    private func handleAlfredArg(_ arg: String?) {
-        guard let arg, !arg.isEmpty else { return }
-        if let url = Self.openableURL(from: arg) {
-            NSWorkspace.shared.open(url)
-        } else {
-            NSPasteboard.general.clearContents()
-            NSPasteboard.general.setString(arg, forType: .string)
-        }
     }
 
     // Treat the arg as URL when it parses with a scheme we recognise.

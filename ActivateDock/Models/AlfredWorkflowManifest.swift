@@ -26,6 +26,15 @@ struct AlfredWorkflowManifest: Decodable {
     // userconfig defaults + top-level variables.
     let userconfigurationconfig: [UserConfigEntry]?
     let objects: [WorkflowObject]?
+    // Directed edges between objects: sourceUID → [connection]
+    let connections: [String: [ManifestConnection]]?
+}
+
+// One directed edge in the plist connection graph.
+struct ManifestConnection: Decodable {
+    let destinationuid: String?
+    // Alfred bitmask: 0=default 1=cmd 2=alt 4=ctrl 8=shift 16=fn (combinable)
+    let modifiers: Int?
 }
 
 struct UserConfigEntry: Decodable {
@@ -63,9 +72,32 @@ struct WorkflowObjectConfig: Decodable {
     // shebang override this. ScriptInvocation maps it to a concrete
     // interpreter command line.
     let type: Int?
+    // action.openurl
+    let url: String?
+    // action.copytoclipboard
+    let text: String?
+    // input.listfilter static items
+    let items: [WorkflowListFilterItem]?
+}
+
+// One static item stored in an input.listfilter node's plist config.
+struct WorkflowListFilterItem: Decodable {
+    let uid: String?
+    let title: String?
+    let subtitle: String?
+    let arg: String?
+    let icon: AlfredIcon?
 }
 
 extension WorkflowObject {
-    static let scriptFilterType = "alfred.workflow.input.scriptfilter"
-    var isScriptFilter: Bool { type == Self.scriptFilterType }
+    static let scriptFilterType    = "alfred.workflow.input.scriptfilter"
+    static let keywordInputType    = "alfred.workflow.input.keyword"
+    static let listFilterInputType = "alfred.workflow.input.listfilter"
+    static let actionScriptType    = "alfred.workflow.action.script"
+    static let actionOpenURLType   = "alfred.workflow.action.openurl"
+    static let actionCopyType      = "alfred.workflow.action.copytoclipboard"
+    static let utilityJunctionType = "alfred.workflow.utility.junction"
+    var isScriptFilter:    Bool { type == Self.scriptFilterType }
+    var isKeywordInput:    Bool { type == Self.keywordInputType }
+    var isListFilterInput: Bool { type == Self.listFilterInputType }
 }

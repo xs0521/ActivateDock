@@ -42,9 +42,8 @@ enum ScriptInvocation {
         }
     }
 
-    static func plan(for workflow: Workflow, query: String) throws -> Plan {
-        let body = workflow.substitutedCommand(query: query)
-        let scriptURL = try writeTempScript(body: body, hint: workflow.bundleId)
+    static func plan(body: String, scriptLanguageType: Int?, bundleId: String) throws -> Plan {
+        let scriptURL = try writeTempScript(body: body, hint: bundleId)
 
         if body.hasPrefix("#!") {
             do {
@@ -59,8 +58,7 @@ enum ScriptInvocation {
             return Plan(executable: scriptURL, arguments: [], cleanupURL: scriptURL)
         }
 
-        let interpreter = interpretersByType[workflow.scriptLanguageType ?? -1]
-            ?? defaultInterpreter
+        let interpreter = interpretersByType[scriptLanguageType ?? -1] ?? defaultInterpreter
         let exec = URL(fileURLWithPath: interpreter[0])
         let args = Array(interpreter.dropFirst()) + [scriptURL.path]
         return Plan(executable: exec, arguments: args, cleanupURL: scriptURL)

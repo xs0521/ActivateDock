@@ -26,7 +26,7 @@
 
 ## 状态
 
-未开工。本文档定义工作范围与切片,实施时按 §9 顺序逐步落地。
+**✅ 全部完成(9/9 步)**。
 
 ---
 
@@ -383,14 +383,14 @@ scriptfilter / listfilter 用户选中 item 后:
 每一步独立可提交、失败可回退。
 
 1. ✅ 立项 —— 本文档
-2. 抽 `WorkflowNode` 协议 + `WorkflowGraph` + 空 `WorkflowExecutor` 骨架;旧 scriptfilter 路径**继续可跑**(渐进迁移)
-3. 把现有 scriptfilter pipeline 包成 `ScriptFilterNode`,executor 走"入口 → scriptfilter → 终点"短路径,UI 切到订阅 `UIIntent`(无功能变化,只是路径切换)
-4. 加 `mods` 解码 + 修饰键路由,验证 `swt ⌘↩ Copy URL` 等跑通(回归:youdao / spike / shi 仍通)
-5. 解 `connections` + 至少 `action.script` / `action.openurl` / `action.copytoclipboard`,验证 `swt ↩ Focus tab` 跑通
-6. 加 `input.keyword` 节点 + entrypoints registry,验证 `sw / swc / stp` 跑通
-7. 加 `input.listfilter` 节点(含动态 script 模式),验证 `swp` 跑通
-8. 删/重命名 `Workflow.swift` / `AlfredScriptFilterRunner.swift`,做最终扫尾
-9. 同步更新 [alfred-plugin-support.md](alfred-plugin-support.md):§6 ❌ 列表里"input.keyword 不支持"等条目移到本文 §8;状态总览补一行 "Graph runtime · 完成"
+2. ✅ 抽 `WorkflowNode` 协议 + `WorkflowGraph` + 空 `WorkflowExecutor` 骨架;旧 scriptfilter 路径**继续可跑**(渐进迁移)
+3. ✅ 把现有 scriptfilter pipeline 包成 `ScriptFilterNode`,executor 走"入口 → scriptfilter → 终点"短路径,UI 切到订阅 `UIIntent`(无功能变化,只是路径切换)
+4. ✅ 加 `mods` 解码 + 修饰键路由,验证 `swt ⌘↩ Copy URL` 等跑通(回归:youdao / spike / shi 仍通)
+5. ✅ 解 `connections` + `action.script` / `action.openurl` / `action.copytoclipboard` / `utility.junction`,executor 加 `activate(item:modifiers:)->Bool` + `walk()` + `continueWalk()`,验证 `swt ↩ Focus tab` 跑通
+6. ✅ 加 `input.keyword` 节点 + entrypoints registry,验证 `sw / swc / stp` 跑通
+7. ✅ 加 `input.listfilter` 节点(含动态 script 模式),验证 `swp` 跑通
+8. ✅ 删/重命名 `Workflow.swift` / `AlfredScriptFilterRunner.swift`,做最终扫尾
+9. ✅ 同步更新 [alfred-plugin-support.md](alfred-plugin-support.md):§6 ❌ 列表里"input.keyword 不支持"等条目移到本文 §8;状态总览补一行 "Graph runtime · 完成"
 
 ---
 

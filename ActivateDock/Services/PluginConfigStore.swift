@@ -59,10 +59,10 @@ final class PluginConfigStore {
         save()
     }
 
-    func mergedVariables(for workflow: Workflow) -> [String: String] {
-        var merged = workflow.variables
-        for (k, _) in workflow.variables {
-            if let v = override(for: workflow.bundleId, varKey: k) { merged[k] = v }
+    func mergedVariables(for graph: WorkflowGraph) -> [String: String] {
+        var merged = graph.variables
+        for (k, _) in graph.variables {
+            if let v = override(for: graph.bundleId, varKey: k) { merged[k] = v }
         }
         return merged
     }

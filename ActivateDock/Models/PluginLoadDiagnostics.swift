@@ -38,6 +38,6 @@ extension PluginLoadFailure.Reason {
 
 struct PluginKeywordConflict {
     let keyword: String
-    let kept: Workflow
-    let dropped: [Workflow]
+    let keptBundleId: String
+    let droppedBundleIds: [String]
 }
