@@ -149,10 +149,7 @@ extension ViewController: NSSearchFieldDelegate {
                                                configuration: NSWorkspace.OpenConfiguration(),
                                                completionHandler: nil)
         case .alfred(let item):
-            if let arg = item.arg, !arg.isEmpty {
-                NSPasteboard.general.clearContents()
-                NSPasteboard.general.setString(arg, forType: .string)
-            }
+            handleAlfredArg(item.arg)
         case .loading, .error:
             return
         }
@@ -161,4 +158,29 @@ extension ViewController: NSSearchFieldDelegate {
         view.window?.orderOut(nil)
     }
 
+    private func handleAlfredArg(_ arg: String?) {
+        guard let arg, !arg.isEmpty else { return }
+        if let url = Self.openableURL(from: arg) {
+            NSWorkspace.shared.open(url)
+        } else {
+            NSPasteboard.general.clearContents()
+            NSPasteboard.general.setString(arg, forType: .string)
+        }
+    }
+
+    // Treat the arg as URL when it parses with a scheme we recognise.
+    // Plugins frequently use arg as a URL (Safari history, tabs, link
+    // openers); when it isn't a URL (translation result, profile id),
+    // we fall back to clipboard so the value isn't lost.
+    private static let openableSchemes: Set<String> = [
+        "http", "https", "file", "mailto", "ftp", "ftps", "ssh"
+    ]
+
+    private static func openableURL(from arg: String) -> URL? {
+        guard let url = URL(string: arg),
+              let scheme = url.scheme?.lowercased(),
+              openableSchemes.contains(scheme)
+        else { return nil }
+        return url
+    }
 }
