@@ -6,3 +6,7 @@ xcuserdata/
 
 # Local IDE / agent settings (machine-specific paths)
 .claude/settings.local.json
+
+# Alfred plugin spike scratch (third-party source + native runtime binary)
+YoudaoTranslator-master/
+txiki-macos-arm64/

@@ -31,6 +31,7 @@ extension ViewController: NSSearchFieldDelegate {
         updateSearchHint(for: text)
         let q = text.trimmingCharacters(in: .whitespacesAndNewlines)
         if q.isEmpty {
+            alfredRunner.cancel()
             searchResults = []
             searchResultsTable.reloadData()
             searchBackground.isHidden = true
@@ -38,14 +39,58 @@ extension ViewController: NSSearchFieldDelegate {
             scrollView.isHidden = false
             return
         }
-        searchResults = InstalledAppsCatalog.search(q, in: installedApps)
-        searchResultsTable.reloadData()
+
         searchBackground.isHidden = false
         searchScrollView.isHidden = false
         scrollView.isHidden = true
+
+        if let alfredQuery = parseAlfredQuery(q) {
+            runAlfred(query: alfredQuery)
+            return
+        }
+
+        alfredRunner.cancel()
+        let apps = InstalledAppsCatalog.search(q, in: installedApps)
+        searchResults = apps.map(SearchRow.app)
+        searchResultsTable.reloadData()
         if !searchResults.isEmpty {
             searchResultsTable.selectRowIndexes([0], byExtendingSelection: false)
             searchResultsTable.scrollRowToVisible(0)
+        }
+    }
+
+    private func parseAlfredQuery(_ input: String) -> String? {
+        let prefix = "yd "
+        guard input.lowercased().hasPrefix(prefix) else { return nil }
+        let q = input.dropFirst(prefix.count).trimmingCharacters(in: .whitespacesAndNewlines)
+        return q.isEmpty ? nil : q
+    }
+
+    private func runAlfred(query: String) {
+        alfredRunner.run(query: query) { [weak self] result in
+            guard let self else { return }
+            switch result {
+            case .success(let items):
+                self.searchResults = items.map(SearchRow.alfred)
+                self.searchResultsTable.reloadData()
+                if !self.searchResults.isEmpty {
+                    self.searchResultsTable.selectRowIndexes([0], byExtendingSelection: false)
+                    self.searchResultsTable.scrollRowToVisible(0)
+                }
+            case .failure(.cancelled):
+                return
+            case .failure(let err):
+                let detail: String
+                switch err {
+                case .launchFailed(let e): detail = "launch failed: \(e.localizedDescription)"
+                case .nonZeroExit(let code, let stderr): detail = "exit \(code): \(stderr.prefix(200))"
+                case .decodeFailed(_, let raw): detail = "decode failed. raw: \(raw.prefix(200))"
+                case .cancelled: return
+                }
+                let item = AlfredItem(title: "[error] yd plugin", subtitle: detail, arg: nil, icon: nil)
+                self.searchResults = [.alfred(item)]
+                self.searchResultsTable.reloadData()
+            }
         }
     }
 
@@ -122,10 +167,17 @@ extension ViewController: NSSearchFieldDelegate {
             return
         }
         guard searchResults.indices.contains(row) else { return }
-        let app = searchResults[row]
-        NSWorkspace.shared.openApplication(at: app.url,
-                                           configuration: NSWorkspace.OpenConfiguration(),
-                                           completionHandler: nil)
+        switch searchResults[row] {
+        case .app(let app):
+            NSWorkspace.shared.openApplication(at: app.url,
+                                               configuration: NSWorkspace.OpenConfiguration(),
+                                               completionHandler: nil)
+        case .alfred(let item):
+            if let arg = item.arg, !arg.isEmpty {
+                NSPasteboard.general.clearContents()
+                NSPasteboard.general.setString(arg, forType: .string)
+            }
+        }
         searchField.stringValue = ""
         updateForSearchText("")
         view.window?.orderOut(nil)

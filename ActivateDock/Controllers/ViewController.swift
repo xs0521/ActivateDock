@@ -25,8 +25,16 @@ final class ViewController: NSViewController {
 
     var groupedApps: [AppGroup] = []
     var installedApps: [InstalledApp] = []
-    var searchResults: [InstalledApp] = []
+    var searchResults: [SearchRow] = []
     var searchDebounceWorkItem: DispatchWorkItem?
+
+    lazy var alfredRunner: AlfredScriptFilterRunner = {
+        let projectRoot = "/Users/luo/Documents/iOS/ActivateDock"
+        return AlfredScriptFilterRunner(
+            runtimePath: "\(projectRoot)/txiki-macos-arm64/tjs",
+            scriptPath: "\(projectRoot)/spike/alfred-stub.js"
+        )
+    }()
 
     var cardDragOverlay: NSImageView?
     var cardDragSourceIndex: Int?

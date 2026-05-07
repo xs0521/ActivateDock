@@ -16,7 +16,12 @@ extension ViewController: NSTableViewDataSource, NSTableViewDelegate {
             cell = SearchResultCell(frame: .zero)
             cell.identifier = SearchResultCell.reuseIdentifier
         }
-        if searchResults.indices.contains(row) { cell.configure(with: searchResults[row]) }
+        if searchResults.indices.contains(row) {
+            switch searchResults[row] {
+            case .app(let app): cell.configure(with: app)
+            case .alfred(let item): cell.configure(alfredItem: item)
+            }
+        }
         cell.setSelected(tableView.selectedRow == row)
         return cell
     }
