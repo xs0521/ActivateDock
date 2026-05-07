@@ -8,9 +8,10 @@
 //  here and is merged on top of the defaults right before the Script
 //  Filter runs.
 //
-//  Storage: UserDefaults, JSON-encoded `[bundleId: [varKey: value]]`.
-//  Credentials are stored as cleartext — Keychain upgrade is a follow-up
-//  once we know which fields are sensitive.
+//  Storage is split by sensitivity:
+//    - Non-secret values: UserDefaults JSON `[bundleId: [varKey: value]]`.
+//    - Secret values (heuristic via PluginVariableSensitivity.isSecret):
+//      Keychain Services, account = "<bundleId>::<varKey>".
 //
 
 import Foundation
@@ -19,48 +20,67 @@ final class PluginConfigStore {
     static let shared = PluginConfigStore()
 
     private let defaultsKey = "PluginConfigOverrides"
-    private var overrides: [String: [String: String]] = [:]
+    private var nonSecretOverrides: [String: [String: String]] = [:]
 
-    private init() { load() }
+    private init() {
+        load()
+    }
 
     func override(for bundleId: String, varKey: String) -> String? {
-        overrides[bundleId]?[varKey]
+        if PluginVariableSensitivity.isSecret(varKey: varKey) {
+            return Keychain.read(account: keychainAccount(bundleId: bundleId, varKey: varKey))
+        }
+        return nonSecretOverrides[bundleId]?[varKey]
     }
 
     func setOverride(_ value: String, for bundleId: String, varKey: String) {
-        var bucket = overrides[bundleId] ?? [:]
+        if PluginVariableSensitivity.isSecret(varKey: varKey) {
+            let account = keychainAccount(bundleId: bundleId, varKey: varKey)
+            if value.isEmpty {
+                Keychain.delete(account: account)
+            } else {
+                Keychain.write(value, account: account)
+            }
+            return
+        }
+
+        var bucket = nonSecretOverrides[bundleId] ?? [:]
         if value.isEmpty {
             bucket.removeValue(forKey: varKey)
         } else {
             bucket[varKey] = value
         }
         if bucket.isEmpty {
-            overrides.removeValue(forKey: bundleId)
+            nonSecretOverrides.removeValue(forKey: bundleId)
         } else {
-            overrides[bundleId] = bucket
+            nonSecretOverrides[bundleId] = bucket
         }
         save()
     }
 
     func mergedVariables(for workflow: Workflow) -> [String: String] {
         var merged = workflow.variables
-        if let userBucket = overrides[workflow.bundleId] {
-            for (k, v) in userBucket { merged[k] = v }
+        for (k, _) in workflow.variables {
+            if let v = override(for: workflow.bundleId, varKey: k) { merged[k] = v }
         }
         return merged
+    }
+
+    private func keychainAccount(bundleId: String, varKey: String) -> String {
+        "\(bundleId)::\(varKey)"
     }
 
     private func load() {
         guard let data = UserDefaults.standard.data(forKey: defaultsKey),
               let decoded = try? JSONDecoder().decode([String: [String: String]].self, from: data) else {
-            overrides = [:]
+            nonSecretOverrides = [:]
             return
         }
-        overrides = decoded
+        nonSecretOverrides = decoded
     }
 
     private func save() {
-        guard let data = try? JSONEncoder().encode(overrides) else { return }
+        guard let data = try? JSONEncoder().encode(nonSecretOverrides) else { return }
         UserDefaults.standard.set(data, forKey: defaultsKey)
     }
 }

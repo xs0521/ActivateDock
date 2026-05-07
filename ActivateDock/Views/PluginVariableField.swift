@@ -2,13 +2,31 @@
 //  PluginVariableField.swift
 //  ActivateDock
 //
-//  NSTextField subclass that carries the (bundleId, varKey) it edits, so
-//  a single delegate can route end-editing back to PluginConfigStore.
+//  NSTextField / NSSecureTextField subclasses that carry the
+//  (bundleId, varKey) they edit, so a single delegate can route end-
+//  editing back to PluginConfigStore. PluginVariableEditing is the
+//  protocol the delegate uses without caring which subclass it has.
 //
 
 import Cocoa
 
-final class PluginVariableField: NSTextField {
+protocol PluginVariableEditing: AnyObject {
+    var bundleId: String { get }
+    var varKey: String { get }
+    var stringValue: String { get }
+}
+
+private func configureCommon(_ field: NSTextField) {
+    field.translatesAutoresizingMaskIntoConstraints = false
+    field.font = .systemFont(ofSize: 12)
+    field.bezelStyle = .roundedBezel
+    field.isBordered = true
+    field.isEditable = true
+    field.usesSingleLineMode = true
+    field.lineBreakMode = .byTruncatingTail
+}
+
+final class PluginVariableField: NSTextField, PluginVariableEditing {
     let bundleId: String
     let varKey: String
 
@@ -16,13 +34,20 @@ final class PluginVariableField: NSTextField {
         self.bundleId = bundleId
         self.varKey = varKey
         super.init(frame: .zero)
-        translatesAutoresizingMaskIntoConstraints = false
-        font = .systemFont(ofSize: 12)
-        bezelStyle = .roundedBezel
-        isBordered = true
-        isEditable = true
-        usesSingleLineMode = true
-        lineBreakMode = .byTruncatingTail
+        configureCommon(self)
+    }
+    required init?(coder: NSCoder) { nil }
+}
+
+final class PluginSecureVariableField: NSSecureTextField, PluginVariableEditing {
+    let bundleId: String
+    let varKey: String
+
+    init(bundleId: String, varKey: String) {
+        self.bundleId = bundleId
+        self.varKey = varKey
+        super.init(frame: .zero)
+        configureCommon(self)
     }
     required init?(coder: NSCoder) { nil }
 }

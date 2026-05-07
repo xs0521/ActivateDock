@@ -138,7 +138,12 @@ final class PluginsSettingsView: NSView, NSTextFieldDelegate {
         label.translatesAutoresizingMaskIntoConstraints = false
         label.widthAnchor.constraint(equalToConstant: 90).isActive = true
 
-        let field = PluginVariableField(bundleId: bundleId, varKey: varKey)
+        let field: NSTextField & PluginVariableEditing
+        if PluginVariableSensitivity.isSecret(varKey: varKey) {
+            field = PluginSecureVariableField(bundleId: bundleId, varKey: varKey)
+        } else {
+            field = PluginVariableField(bundleId: bundleId, varKey: varKey)
+        }
         field.placeholderString = placeholder
         field.stringValue = store.override(for: bundleId, varKey: varKey) ?? ""
         field.delegate = self
@@ -169,7 +174,7 @@ final class PluginsSettingsView: NSView, NSTextFieldDelegate {
     }
 
     func controlTextDidEndEditing(_ obj: Notification) {
-        guard let f = obj.object as? PluginVariableField else { return }
+        guard let f = obj.object as? PluginVariableEditing else { return }
         store.setOverride(f.stringValue, for: f.bundleId, varKey: f.varKey)
     }
 }

@@ -14,7 +14,8 @@
 | Roadmap doc | ✅ 完成 | `b1f009d` | 本文件首版 |
 | **B 路径** | ✅ 完成 | `5a4e972` | info.plist 解析 + Workflow Registry |
 | **A 路径** | ✅ 完成 | `433cfd7` | 真 Youdao 插件 + Settings 配置 UI |
-| **C 路径** | ✅ 完成 | _待提交_ | UX 打磨(hint / loading / 错误美化 / 防抖调长) |
+| **C 路径** | ✅ 完成 | `35c084c` | UX 打磨(hint / loading / 错误美化 / 防抖调长) |
+| **F1 + F2** | ✅ 完成 | _待提交_ | 凭证安全(secret → Keychain · NSSecureTextField) |
 
 **已识别但未规划的 follow-up** 见 §1.5。
 
@@ -81,12 +82,31 @@ A 路径完成后衍生的工程性事项,优先级跟 C 类似,但属于"打磨
 
 | # | 事项 | 触发场景 | 难度 |
 |---|---|---|---|
-| F1 | secret 字段当前**明文存 UserDefaults** → 应升级 Keychain | 凭证安全 | 中(要做加解密 API + 迁移现有值) |
-| F2 | secret 字段当前**明文显示** → 应换 `NSSecureTextField` | 配置 UI 隐私 | 低(swap 控件类型,加可见性切换按钮) |
+| F1 | ✅ secret 字段从 UserDefaults 迁到 Keychain | 凭证安全 | 中 — 见下 |
+| F2 | ✅ secret 字段改用 `NSSecureTextField` | 配置 UI 隐私 | 低 — 见下 |
 | F3 | `WorkflowRegistry` **没有热重载** → 改 plist 要重启 app(改 store 不需要) | 开发体验 | 中(FileWatcher 监听 Plugins 目录) |
 | F4 | Settings 窗口**没有 scrollview** → plugin 多了内容会溢出 | UI 健壮性 | 低(把 PluginsSettingsView 包进 NSScrollView) |
 
-**判断**:F1/F2 一组(凭证安全),F3/F4 一组(UI/DX)。如果做,建议 F1+F2 一起,F3 单独,F4 顺手。
+**F1 + F2 实际交付**:
+- `Services/Keychain.swift` — `SecItem*` 薄封装,service =
+  `zerobytetech.ActivateDock.PluginConfig`,account = `<bundleId>::<varKey>`,
+  失败仅 NSLog 不抛错(best-effort,用户可重输)。
+- `Services/PluginVariableSensitivity.swift` — 启发式 `isSecret(varKey:)`:
+  小写后包含 `secret/password/token/apikey/appkey` 或精确等于 `key/pwd`。
+  Alfred manifest 没有原生 secret 标记,先用约定俗成的字段名匹配。
+- `Services/PluginConfigStore.swift` — secret key 走 Keychain,普通 key 走
+  UserDefaults。`mergedVariables(for:)` 按需合并。项目尚未发布首版,无存量数据
+  迁移逻辑。
+- `Views/PluginVariableField.swift` — 加 `PluginVariableEditing` 协议;同文件
+  补 `PluginSecureVariableField: NSSecureTextField`。两类共享 `configureCommon`
+  视觉配置。
+- `Views/PluginsSettingsView.swift` — `makeVariableRow` 按 `isSecret` 分支选
+  field 类型,delegate 走协议而不是具体类。
+
+**未做(已知)**:可见性切换按钮(eye toggle)。masked 后用户重新校验只能靠
+重新粘贴。如确有需要再加,做成 wrapper view 较干净。
+
+**剩余 follow-up**:F3(热重载) / F4(Settings 加 scrollview)。
 
 ---
 
@@ -165,7 +185,7 @@ A 路径完成后衍生的工程性事项,优先级跟 C 类似,但属于"打磨
 | **A 跟在 B 后** | B 完成后,跑真 Youdao = "把改过的 plugin 放进 plugin 目录 + 配 env",几乎零工作量。 | ✅ commit `433cfd7`(顺手扩展了 Settings UI) |
 | **C 最后** | UX 容易反复,在架构稳定前打磨容易做无用功。 | ✅ _待提交_ |
 
-**当前候选**:F1+F2(凭证安全) / F3+F4(UI 加固),二选一开下一阶段。
+**当前候选**:F3(热重载) / F4(Settings ScrollView)。
 
 ---
 
