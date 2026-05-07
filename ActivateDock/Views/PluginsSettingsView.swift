@@ -51,6 +51,11 @@ final class PluginsSettingsView: NSView, NSTextFieldDelegate {
     func rebuild() {
         for view in stack.arrangedSubviews { view.removeFromSuperview() }
 
+        if let diagnostics = makeDiagnosticsSection() {
+            stack.addArrangedSubview(diagnostics)
+            stack.addArrangedSubview(makeDivider())
+        }
+
         let groups = pluginGroups()
         if groups.isEmpty {
             stack.addArrangedSubview(makeMutedLabel("No plugins installed yet."))

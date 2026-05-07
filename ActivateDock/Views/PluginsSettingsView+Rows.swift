@@ -31,7 +31,7 @@ extension PluginsSettingsView {
 
     private func makeField(bundleId: String, varKey: String,
                            placeholder: String, stored: String) -> NSView {
-        if PluginVariableSensitivity.isSecret(varKey: varKey) {
+        if PluginVariableSensitivity.isSecret(bundleId: bundleId, varKey: varKey) {
             let wrapper = PluginSecretVariableRow(bundleId: bundleId, varKey: varKey)
             wrapper.placeholderString = placeholder
             wrapper.stringValue = stored

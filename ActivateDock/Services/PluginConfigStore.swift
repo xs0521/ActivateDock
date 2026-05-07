@@ -10,8 +10,9 @@
 //
 //  Storage is split by sensitivity:
 //    - Non-secret values: UserDefaults JSON `[bundleId: [varKey: value]]`.
-//    - Secret values (heuristic via PluginVariableSensitivity.isSecret):
-//      Keychain Services, account = "<bundleId>::<varKey>".
+//    - Secret values (declared in manifest's `secretvariables` or
+//      matched by PluginVariableSensitivity heuristic): Keychain
+//      Services, account = "<bundleId>::<varKey>".
 //
 
 import Foundation
@@ -27,14 +28,14 @@ final class PluginConfigStore {
     }
 
     func override(for bundleId: String, varKey: String) -> String? {
-        if PluginVariableSensitivity.isSecret(varKey: varKey) {
+        if PluginVariableSensitivity.isSecret(bundleId: bundleId, varKey: varKey) {
             return Keychain.read(account: keychainAccount(bundleId: bundleId, varKey: varKey))
         }
         return nonSecretOverrides[bundleId]?[varKey]
     }
 
     func setOverride(_ value: String, for bundleId: String, varKey: String) {
-        if PluginVariableSensitivity.isSecret(varKey: varKey) {
+        if PluginVariableSensitivity.isSecret(bundleId: bundleId, varKey: varKey) {
             let account = keychainAccount(bundleId: bundleId, varKey: varKey)
             if value.isEmpty {
                 Keychain.delete(account: account)

@@ -14,6 +14,11 @@ struct AlfredWorkflowManifest: Decodable {
     let name: String?
     let description: String?
     let variables: [String: String]?
+    // ActivateDock-specific extension — Alfred's schema has no native
+    // "this variable holds a credential" marker. Plugin authors can
+    // list variable names here to force secure storage + masked UI,
+    // overriding the name-based heuristic in PluginVariableSensitivity.
+    let secretvariables: [String]?
     let objects: [WorkflowObject]?
 }
 
