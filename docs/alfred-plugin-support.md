@@ -6,6 +6,20 @@
 
 ---
 
+## 状态总览
+
+| 阶段 | 状态 | Commit | 摘要 |
+|---|---|---|---|
+| Spike | ✅ 完成 | `d25e350` | 端到端管道,硬编码 yd |
+| Roadmap doc | ✅ 完成 | `b1f009d` | 本文件首版 |
+| **B 路径** | ✅ 完成 | `5a4e972` | info.plist 解析 + Workflow Registry |
+| **A 路径** | ✅ 完成 | `433cfd7` | 真 Youdao 插件 + Settings 配置 UI |
+| **C 路径** | ⏳ 待做 | — | UX 打磨(hint / loading / 错误美化) |
+
+**已识别但未规划的 follow-up** 见 §1.5。
+
+---
+
 ## 1. 当前进展
 
 已完成 **spike**(commit `d25e350`),验证管道端到端可行:
@@ -22,14 +36,27 @@ Swift 输入 "yd hello"
 
 ### 落地的代码
 
-| 文件 | 角色 |
-|---|---|
-| `ActivateDock/Models/AlfredItem.swift` | Codable 数据模型 |
-| `ActivateDock/Models/SearchRow.swift` | `enum SearchRow { case app / case alfred }` 数据源切换 |
-| `ActivateDock/Services/AlfredScriptFilterRunner.swift` | Process 包装 + 取消并发请求 |
-| `ActivateDock/Views/SearchResultCell.swift` | 加 subtitle label + alfred configure overload |
-| `ActivateDock/Controllers/ViewController*.swift` | yd 路由 + 数据源 dispatch + Enter 处理 |
-| `spike/alfred-stub.js` | 测试 fixture(产固定 4 条 items) |
+> 截至 commit `433cfd7`(B + A 路径完成)。
+
+| 文件 | 角色 | 引入 |
+|---|---|---|
+| `Models/AlfredItem.swift` | Alfred Script Filter JSON Codable | spike |
+| `Models/SearchRow.swift` | `enum SearchRow { case app / case alfred }` 数据源切换 | spike |
+| `Models/AlfredWorkflowManifest.swift` | info.plist Codable 子集(含 description) | B / A |
+| `Models/Workflow.swift` | runtime workflow value type(含 description、shell-quote) | B / A |
+| `Services/AlfredScriptFilterRunner.swift` | Process 包装 + 取消逻辑;接受 Workflow | spike → B |
+| `Services/AlfredWorkflowLoader.swift` | 扫 plugin 目录、解 plist、产 [Workflow] | B |
+| `Services/WorkflowRegistry.swift` | keyword → Workflow 索引 | B |
+| `Services/PluginPaths.swift` | `~/Library/Application Support/ActivateDock/Plugins/` 约定 | B |
+| `Services/PluginConfigStore.swift` | UserDefaults override store(per bundleId / per varKey) | A |
+| `Views/SearchResultCell.swift` | subtitle label + alfred configure overload | spike |
+| `Views/PluginVariableField.swift` | 携带 (bundleId, varKey) 的 NSTextField subclass | A |
+| `Views/PluginsSettingsView.swift` | 动态生成的 plugins 配置 UI | A |
+| `Controllers/SettingsContentBuilder.swift` | 加 plugins section | A |
+| `Controllers/SettingsWindowController.swift` | 持有 PluginsSettingsView,窗口尺寸 480×520 | A |
+| `Controllers/ViewController*.swift` | 关键词路由(查 registry)+ 数据源 dispatch + Enter 处理 | spike → B |
+| `App/AppDelegate.swift` | 启动时 `PluginPaths.ensureExists()` + `Registry.reload()` | B |
+| `spike/alfred-stub.js` | 最简 Alfred Script Filter 参考脚本 | spike |
 
 ### 仓外资产(.gitignore)
 
@@ -38,22 +65,38 @@ Swift 输入 "yd hello"
 | `txiki-macos-arm64/tjs` | txiki.js v26.4.0 arm64 运行时,执行 JS |
 | `YoudaoTranslator-master/` | 第三方有道翻译 plugin 源码(参考用) |
 
-### 已知 Tech Debt
+### Spike 阶段 Tech Debt(进度)
 
-1. **硬编码绝对路径**:`ViewController.swift` 里 alfredRunner 写死了
-   `/Users/luo/Documents/iOS/ActivateDock/...` 路径,clone 出去无法运行。
-2. **单 runner 实例**,无 plugin 注册表 → 只能挂 1 个插件。
-3. **没有 info.plist 解析** → 关键词只能硬编码("yd ")。
-4. **icon 路径相对解析未做** → 真插件的 icon.path 通常相对脚本目录。
-5. **stderr 攒批读取** → 调试真插件慢,看不到实时日志。
-6. **错误 UX 简陋** → 只是把 `[error]` 当一行 item 显示。
-7. **没有输入提示** → 用户不知道当前 keyword 等什么。
+1. ✅ ~~硬编码绝对路径~~ — B 路径用 PluginPaths + Registry 替换。
+2. ✅ ~~单 runner 实例,无 plugin 注册表~~ — B 路径加 WorkflowRegistry。
+3. ✅ ~~没有 info.plist 解析~~ — B 路径加 AlfredWorkflowLoader。
+4. ✅ ~~icon 路径相对解析未做~~ — B 路径在 `Workflow.resolvingIconPaths` 里 resolve。
+5. ⏳ **stderr 攒批读取** → 调试真插件慢,看不到实时日志。(C 候选)
+6. ⏳ **错误 UX 简陋** → 只是把 `[error]` 当一行 item 显示。(C 候选)
+7. ⏳ **没有输入提示** → 用户不知道当前 keyword 等什么。(C 候选)
+
+### 1.5 已识别的 follow-up(未规划进任何路径)
+
+A 路径完成后衍生的工程性事项,优先级跟 C 类似,但属于"打磨/加固"性质。
+
+| # | 事项 | 触发场景 | 难度 |
+|---|---|---|---|
+| F1 | secret 字段当前**明文存 UserDefaults** → 应升级 Keychain | 凭证安全 | 中(要做加解密 API + 迁移现有值) |
+| F2 | secret 字段当前**明文显示** → 应换 `NSSecureTextField` | 配置 UI 隐私 | 低(swap 控件类型,加可见性切换按钮) |
+| F3 | `WorkflowRegistry` **没有热重载** → 改 plist 要重启 app(改 store 不需要) | 开发体验 | 中(FileWatcher 监听 Plugins 目录) |
+| F4 | Settings 窗口**没有 scrollview** → plugin 多了内容会溢出 | UI 健壮性 | 低(把 PluginsSettingsView 包进 NSScrollView) |
+
+**判断**:F1/F2 一组(凭证安全),F3/F4 一组(UI/DX)。如果做,建议 F1+F2 一起,F3 单独,F4 顺手。
 
 ---
 
 ## 2. 三条候选路径
 
-### A. 接真 Youdao 插件
+### A. 接真 Youdao 插件 ✅ 已完成(commit `433cfd7`)
+
+> 实际交付**超出**原计划:为了不让用户改 plist,A 阶段顺手做了
+> `PluginConfigStore` + Settings 配置 UI + manifest description 字段。
+> 这些都不在原 A 的计划里,但跟 A 的"真实场景"目标相洽。
 
 **目的**:用一个真实第三方插件验证我们的 Swift 能跑真东西。
 
@@ -71,7 +114,7 @@ Swift 输入 "yd hello"
 
 **工作量**:~1 小时(瓶颈在 API key 申请)
 
-### B. info.plist 解析 + plugin 注册表(推荐先做)
+### B. info.plist 解析 + plugin 注册表 ✅ 已完成(commit `5a4e972`)
 
 **目的**:把"硬编码一个插件"升级为"扫描目录注册 N 个插件",验证架构通用性。
 
@@ -88,7 +131,7 @@ Swift 输入 "yd hello"
 
 **工作量**:~2~3 小时(瓶颈在 Alfred plist 的复杂 schema)
 
-### C. UX 打磨
+### C. UX 打磨 ⏳ 待做
 
 **目的**:让 alfred 路径的输入体验跟现有 google/baidu 一致。
 
@@ -104,13 +147,15 @@ Swift 输入 "yd hello"
 
 ## 3. 执行顺序与理由
 
-**推荐:B → A → C**
+**原计划:B → A → C**(实际 B、A 已交付,C 待做)
 
-| 顺序 | 理由 |
-|---|---|
-| **B 先** | 架构验证比单点验证更有价值。先把"通用性"打通,A 就成顺路的事。 |
-| **A 跟在 B 后** | B 完成后,跑真 Youdao = "把改过的 plugin 放进 plugin 目录 + 配 env",几乎零工作量。 |
-| **C 最后** | UX 容易反复,在架构稳定前打磨容易做无用功。 |
+| 顺序 | 理由 | 实际 |
+|---|---|---|
+| **B 先** | 架构验证比单点验证更有价值。先把"通用性"打通,A 就成顺路的事。 | ✅ commit `5a4e972` |
+| **A 跟在 B 后** | B 完成后,跑真 Youdao = "把改过的 plugin 放进 plugin 目录 + 配 env",几乎零工作量。 | ✅ commit `433cfd7`(顺手扩展了 Settings UI) |
+| **C 最后** | UX 容易反复,在架构稳定前打磨容易做无用功。 | ⏳ 候选 |
+
+**当前候选**:C 路径 / F1+F2(凭证安全) / F3+F4(UI 加固),三选一开下一阶段。
 
 ---
 
@@ -156,30 +201,23 @@ Swift 输入 "yd hello"
 
 **忽略字段**:节点连线(`connections`)、UI 元数据、其他类型节点。
 
-### 4.3 任务拆解(B 的开发清单)
+### 4.3 任务拆解(B 的开发清单 — 全部完成于 `5a4e972`)
 
-下次开发直接照这个清单做:
-
-1. [ ] **目录约定**:确定 `~/Library/Application Support/ActivateDock/Plugins/`
-       为 plugin 安装根。app 启动时自动 mkdir。
-2. [ ] **`AlfredWorkflowManifest.swift`**:Codable struct 表达上面的 plist 子集。
-       注意:Alfred plist 的 objects 数组成员 type 多种,需要解码时按 type 分支。
-3. [ ] **`AlfredWorkflowLoader.swift`**:扫描 plugin 根 → 每个子目录读 `info.plist`
-       → 用 `PropertyListDecoder` 反序列化 → 过滤 script filter 节点 → 产 `[Workflow]`。
-       失败的 plugin 记日志、跳过,不要让一个坏 plugin 拖死整个 app。
-4. [ ] **`Workflow` 类型**:封装 `keyword / scriptCommand / pluginDir / variables`。
-       script 字段里的 `{query}` 占位符在运行前替换。
-5. [ ] **`WorkflowRegistry.swift`**:`[String: Workflow]` keyword 索引。
-       app 启动时 load 一次,后续可加 file watcher 热重载(v2 再做)。
-6. [ ] **`AlfredScriptFilterRunner` 改造**:`run(workflow:, query:, completion:)`,
-       cwd 设为 plugin 目录,env 注入 workflow.variables。
-7. [ ] **search 路由改造**:`updateForSearchText` 里 hardcoded "yd " 改成
-       `Registry.lookup(prefix: q)`,匹配上就走 alfred 路径。
-8. [ ] **icon 路径解析**:`AlfredIcon.path` 若为相对路径,resolve 相对脚本所在目录。
-9. [ ] **错误降级**:plist 解析失败 / 脚本路径不存在 / 二进制无可执行权限 →
-       明确提示,不要静默。
-10. [ ] **验收**:把 spike 的 stub 包装成完整 plugin 目录(带 info.plist),
-        跑通后再试 Youdao(衔接 A)。
+1. [x] **目录约定**:`~/Library/Application Support/ActivateDock/Plugins/` 为安装根,
+       启动时 `PluginPaths.ensureExists()`。
+2. [x] **`AlfredWorkflowManifest.swift`**:Codable struct,带 `description`(A 阶段新增)。
+3. [x] **`AlfredWorkflowLoader.swift`**:扫描、PropertyListDecoder、产 `[Workflow]`,
+       错误 log + skip。
+4. [x] **`Workflow` 类型**:封装 keyword / scriptCommand / pluginDir / variables / description,
+       `{query}` shell-quoted 替换。
+5. [x] **`WorkflowRegistry.swift`**:keyword → Workflow 索引,启动时 reload 一次。
+       (热重载未做,见 F3)
+6. [x] **`AlfredScriptFilterRunner` 改造**:`run(workflow:, query:, completion:)`,
+       走 `/bin/sh -c`,cwd=pluginDir,env 注入 `PluginConfigStore.mergedVariables(for:)`。
+7. [x] **search 路由改造**:`WorkflowRegistry.shared.match(input:)`。
+8. [x] **icon 路径解析**:`Workflow.resolvingIconPaths(in:)`,相对路径相对 pluginDir 解析。
+9. [x] **错误降级**:plist 失败 → log + skip;runtime 失败 → cell 显示 `[error]` 行。
+10. [x] **验收**:`spike-stub` plugin 装在 Plugins 目录,跑通后接 Youdao 真插件。
 
 ---
 
