@@ -9,13 +9,17 @@ enum SettingsContentBuilder {
     static func build(recorder: KeyRecorderView,
                       accessibilitySwitch: StateSwitch,
                       pluginsView: PluginsSettingsView) -> NSView {
-        let stack = NSStackView()
-        stack.orientation = .vertical
-        stack.alignment = .leading
-        stack.spacing = 18
-        stack.edgeInsets = NSEdgeInsets(top: 24, left: 24, bottom: 24, right: 24)
-        stack.translatesAutoresizingMaskIntoConstraints = false
+        let general = buildGeneralPage(recorder: recorder, accessibilitySwitch: accessibilitySwitch)
+        let plugins = buildPluginsPage(pluginsView: pluginsView)
+        return SettingsTabContainer(pages: [
+            .init(title: "通用", view: general),
+            .init(title: "Plugins", view: plugins)
+        ])
+    }
 
+    private static func buildGeneralPage(recorder: KeyRecorderView,
+                                         accessibilitySwitch: StateSwitch) -> NSView {
+        let stack = makePageStack()
         stack.addArrangedSubview(makeSection(
             title: "Activation Shortcut",
             subtitle: "Press a key combination to summon ActivateDock from anywhere.",
@@ -27,10 +31,27 @@ enum SettingsContentBuilder {
             subtitle: "Used to restore minimized windows when you click an app icon. App switching still works without this permission.",
             trailing: accessibilitySwitch
         ))
-        stack.addArrangedSubview(makeDivider())
+        return wrapInScroll(stack)
+    }
+
+    private static func buildPluginsPage(pluginsView: PluginsSettingsView) -> NSView {
+        let stack = makePageStack()
         stack.addArrangedSubview(makePluginsHeader())
         stack.addArrangedSubview(pluginsView)
+        return wrapInScroll(stack)
+    }
 
+    private static func makePageStack() -> NSStackView {
+        let stack = NSStackView()
+        stack.orientation = .vertical
+        stack.alignment = .leading
+        stack.spacing = 18
+        stack.edgeInsets = NSEdgeInsets(top: 24, left: 24, bottom: 24, right: 24)
+        stack.translatesAutoresizingMaskIntoConstraints = false
+        return stack
+    }
+
+    private static func wrapInScroll(_ stack: NSStackView) -> NSView {
         let scroll = NSScrollView()
         scroll.translatesAutoresizingMaskIntoConstraints = false
         scroll.hasVerticalScroller = true
@@ -38,6 +59,13 @@ enum SettingsContentBuilder {
         scroll.autohidesScrollers = true
         scroll.drawsBackground = false
         scroll.borderType = .noBorder
+
+        // Flipped clip view → y=0 sits at the top, so a stack shorter
+        // than the viewport pins to the top instead of floating to the
+        // bottom (NSView's default unflipped origin is bottom-left).
+        let clip = FlippedClipView()
+        clip.drawsBackground = false
+        scroll.contentView = clip
         scroll.documentView = stack
 
         let container = NSView()
@@ -47,9 +75,16 @@ enum SettingsContentBuilder {
             scroll.bottomAnchor.constraint(equalTo: container.bottomAnchor),
             scroll.leadingAnchor.constraint(equalTo: container.leadingAnchor),
             scroll.trailingAnchor.constraint(equalTo: container.trailingAnchor),
-            stack.widthAnchor.constraint(equalTo: scroll.contentView.widthAnchor)
+            stack.topAnchor.constraint(equalTo: clip.topAnchor),
+            stack.leadingAnchor.constraint(equalTo: clip.leadingAnchor),
+            stack.trailingAnchor.constraint(equalTo: clip.trailingAnchor),
+            stack.widthAnchor.constraint(equalTo: clip.widthAnchor)
         ])
         return container
+    }
+
+    private final class FlippedClipView: NSClipView {
+        override var isFlipped: Bool { true }
     }
 
     private static func makeSection(title: String, subtitle: String, trailing: NSView) -> NSView {
