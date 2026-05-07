@@ -76,11 +76,12 @@ struct WorkflowObjectConfig: Decodable {
     let url: String?
     // action.copytoclipboard
     let text: String?
-    // input.listfilter static items
-    let items: [WorkflowListFilterItem]?
+    // input.listfilter: Alfred stores items as a JSON-encoded string, not a
+    // native plist array. Expand {var:NAME} in this string, then JSON-decode.
+    let items: String?
 }
 
-// One static item stored in an input.listfilter node's plist config.
+// One static item decoded from the JSON string in an input.listfilter config.
 struct WorkflowListFilterItem: Decodable {
     let uid: String?
     let title: String?

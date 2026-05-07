@@ -49,13 +49,21 @@ extension AlfredWorkflowLoader {
                                          scriptCommand: expand(raw, with: effectiveVars),
                                          scriptLanguageType: obj.config?.type)
             }
-            // Static mode: decode plist items, expand {var:NAME}, pre-build AlfredItems
-            let alfredItems = (obj.config?.items ?? []).compactMap { item -> AlfredItem? in
-                guard let raw = item.title, !raw.isEmpty else { return nil }
-                return AlfredItem(title: expand(raw, with: effectiveVars),
-                                  subtitle: item.subtitle.map { expand($0, with: effectiveVars) },
-                                  arg: item.arg.map { expand($0, with: effectiveVars) },
-                                  icon: item.icon, mods: nil, variables: nil, valid: nil)
+            // Static mode: items is a JSON string in the plist.
+            // Expand {var:NAME} in the raw string first, then JSON-decode.
+            let rawItems: [WorkflowListFilterItem]
+            if let jsonStr = obj.config?.items,
+               let data = expand(jsonStr, with: effectiveVars).data(using: .utf8),
+               let decoded = try? JSONDecoder().decode([WorkflowListFilterItem].self, from: data) {
+                rawItems = decoded
+            } else {
+                rawItems = []
+            }
+            let alfredItems = rawItems.compactMap { item -> AlfredItem? in
+                guard let title = item.title, !title.isEmpty else { return nil }
+                return AlfredItem(title: title, subtitle: item.subtitle,
+                                  arg: item.arg, icon: item.icon,
+                                  mods: nil, variables: nil, valid: nil)
             }
             return ListFilterInputNode(uid: uid, rawItems: alfredItems)
         case WorkflowObject.utilityJunctionType:
