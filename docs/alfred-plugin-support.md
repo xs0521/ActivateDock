@@ -3,6 +3,10 @@
 > 目标:让 ActivateDock 能直接加载并运行符合 **Alfred Script Filter** 协议
 > 的第三方插件(占 Alfred 生态绝大多数:翻译/词典/汇率/搜索类)。
 > 不追求 Alfred 全功能兼容。
+>
+> 架构层面的下一阶段(graph runtime · 多节点类型 / connections / mods)
+> 在 [workflow-graph-runtime.md](workflow-graph-runtime.md) 单独立项。
+> 本文是"已交付"账本,新文是"下一步"设计。
 
 ---
 
@@ -18,8 +22,13 @@
 | **F1 + F2** | ✅ 完成 | `e4dc3b5` | 凭证安全(secret → Keychain · NSSecureTextField) |
 | **F3 / F4 / TD-5 / F2-eye** | ✅ 完成 | `0c6b702` | 热重载 · Settings ScrollView · stderr 实时日志 · secret 可见性切换 |
 | **F5 / F6 / F7 / F8** | ✅ 完成 | `9e2b94a` | 加载失败 + keyword 冲突 UI · 命令构造威胁模型 · manifest `secretvariables` |
+| **Settings 双 tab** | ✅ 完成 | `869a943` | 通用 / Plugins 顶部导航 · flipped clip view 顶部对齐 |
+| **F9 ~ F16(post-F8)** | ✅ 完成 | `bf440d5` | `{var:NAME}` 模板展开 + `userconfigurationconfig` 默认值 · 脚本语言 dispatch(shebang / `type`)· stdout 持续 drain · Settings 导入按钮 + PluginImporter · `keyword + 空格` 立即触发 · URL arg 走 NSWorkspace · TCC 错误 → 权限指引 |
+| **打包工具** | ✅ 完成 | `672645c` | `build.sh` 一键 Release + zip,可选 `--install` 到 `/Applications` |
+| **URL/复制 fallback** | ✅ 完成 | `6a471ef` | scriptfilter 选中后 Enter:URL 走 NSWorkspace,非 URL 复制 |
+| **Graph runtime 立项** | 📋 设计中 | `cb7f236` | [workflow-graph-runtime.md](workflow-graph-runtime.md):多节点类型 / connections / mods |
 
-**已识别但未规划的 follow-up** 见 §1.5。
+**已识别但未规划的 follow-up** 见 §1.5。post-F8 的工作以 F9–F16 形式补登。
 
 ---
 
@@ -98,6 +107,14 @@ A 路径完成后衍生的工程性事项,优先级跟 C 类似,但属于"打磨
 | F6 | ✅ 插件加载失败(缺 plist / 解析失败 / scriptfilter 缺字段)同 banner 列出 | 一致性 | 低 |
 | F7 | ✅ 命令构造威胁模型写入 `Workflow.swift` 文件头注释 | 安全文档 | 极低 |
 | F8 | ✅ manifest 新增可选 `secretvariables: [String]`,声明优先于名字启发式 | 凭证安全 | 中 |
+| F9 | ✅ `{var:NAME}` 模板展开 + `userconfigurationconfig` 默认值并入 `effectiveVariables`(commit `bf440d5`) | 真实 plugin 兼容性 | 中 |
+| F10 | ✅ 脚本语言 dispatch:shebang 优先,否则查 `cfg.type` 选 interpreter(bash / zsh / php / ruby / python / osascript-AS / -JS),其余 fallback `/bin/sh`(新增 `Services/ScriptInvocation.swift`) | JXA / 多语言 plugin 兼容 | 中 |
+| F11 | ✅ stdout 加 `readabilityHandler` 持续 drain —— 修 16KB pipe 死锁(shi 输出 ~250KB 时表现为永远 loading) | 大输出脚本可用性 | 低 |
+| F12 | ✅ Settings → Plugins 顶部"+ 导入插件"按钮:`.alfredworkflow` / `.zip` / 目录三态 NSOpenPanel + `PluginImporter` 解压/查重/落盘(按 `bundleId` 而非目录名查重)| 用户安装入口 | 中 |
+| F13 | ✅ `WorkflowRegistry.match` 接受空 query,UI 入口对原始 `text` 而非 trim 后的 `q` 取 keyword,`shi <空格>` 立即触发 | 行为对齐 Alfred | 低 |
+| F14 | ✅ scriptfilter Enter 路径:URL arg(http/https/file/mailto/ftp/ssh)→ `NSWorkspace.open`,非 URL → 剪贴板(commit `6a471ef`)| Safari history / tabs 可用 | 低 |
+| F15 | ✅ TCC fingerprint 识别 → 错误 cell 显式 "需要权限" + "系统设置 → … → 添加 ActivateDock"(FDA / Apple Events 两条路径) | 用户首跑友好度 | 低 |
+| F16 | ✅ Settings 顶部分 "通用 / Plugins" 双 tab(NSSegmentedControl)+ flipped NSClipView 顶部对齐(commit `869a943`)| Settings 导航 | 低 |
 
 **F1 + F2 实际交付**:
 - `Services/Keychain.swift` — `SecItem*` 薄封装,service =
@@ -288,10 +305,17 @@ A 路径完成后衍生的工程性事项,优先级跟 C 类似,但属于"打磨
 
 ## 5. 未做事项汇总(写给"下一段时间想做点什么"的自己)
 
-§1.5 列出的 8 条 follow-up(F1–F8)已全部交付。**目前没有未规划的健壮性 / 体验候选** —
-新发现的事项请先开条目进 §1.5,再来这里登记。
+§1.5 列出的 follow-up(F1–F16)全部属于"打磨/加固"性质,**已全部交付**。
 
-§6 是"明确不做"的范围声明,优先级独立于本节。
+**架构层面的下一步**已单独立项 → [workflow-graph-runtime.md](workflow-graph-runtime.md):
+
+引入 graph 引擎(`WorkflowNode` 协议 + `WorkflowGraph` + `WorkflowExecutor` +
+`UIIntent`),把现在"单 scriptfilter + 硬编码 Enter 行为"的扁平模型升级到
+Alfred 真实的"图 + 沿 connections 走 + 修饰键选边"。落地后能解锁的 plugin
+能力面比 F-序列大一个量级 —— 详情见那份 doc 的 §4 节点 MVP 与 §9 落地顺序。
+
+新发现的"打磨/加固"小事项请进 §1.5(继续 F17、F18 …);**架构性**的事项进
+graph runtime 那份 doc。§6 是"明确不做"的范围声明,优先级独立于本节。
 
 ---
 
@@ -302,9 +326,11 @@ A 路径完成后衍生的工程性事项,优先级跟 C 类似,但属于"打磨
 - ❌ File Action(从 Finder 选中文件触发)
 - ❌ Snippets(关键字展开为文本)
 - ❌ Hotkey-in-workflow(单个 plugin 自带快捷键 → 跟现有 HotKeyManager 冲突)
-- ❌ Universal Action / 节点图(workflow 内部多步流水)
-- ❌ `.alfredworkflow` 双击安装(用户暂时手动放目录)
-- ❌ Alfred 私有 API(`alfred:` URL scheme、`alfredpreferences://` 等)
+- ❌ Finder 双击 `.alfredworkflow` 直装 —— **app 内导入已支持**(F12,Settings → Plugins → "+ 导入插件",接受 `.alfredworkflow` / `.zip` / 目录)
+- ❌ Alfred 私有 API(`alfred:` URL scheme、`alfredpreferences://`、`tell application "Alfred"` AppleEvent 等)。后果之一:用 AppleEvent 调 Alfred "回填搜索框"实现的 `⌥↩ Edit` 类语义不工作 —— 详 [workflow-graph-runtime.md §8](workflow-graph-runtime.md#8-不在范围)。
+
+> Universal Action / 节点图("workflow 内部多步流水")**已从本节移除** ——
+> graph runtime 立项后,connections 遍历进入实现路线;详 workflow-graph-runtime.md。
 
 如果未来要做某一项,在这份文档里加新章节或开新 doc,不要悄悄塞。
 
