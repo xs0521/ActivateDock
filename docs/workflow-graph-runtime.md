@@ -82,46 +82,133 @@ Alfred 内部对所有 plugin 一视同仁,**不存在任何 plugin 适配代码
 
 ## 3. 目标架构
 
+所有架构层决议(下文 A1–A8)均已锁定 → 见 §7 决议要点。下面是经决议后
+的具体类型形状:
+
 ```swift
-// 节点协议(每种 type 一个实现)
+// === 节点协议(每种 type 一个实现)===
+//
+// Callback-based,与现有 AlfredScriptFilterRunner 风格一致(A1 决议)。
+// 每次 execute 都拿到独立 completion 闭包;调用方负责 invalidate / 忽略
+// 迟到回调以做"在飞中取消"。
+
 protocol WorkflowNode {
     var uid: String { get }
-    func execute(input: NodeInput, context: WorkflowContext) async -> NodeOutput
+    var nodeType: String { get }    // "input.scriptfilter" 等,带进 WorkflowError
+    func execute(input: NodeInput,
+                 context: WorkflowContext,
+                 completion: @escaping (Result<NodeOutput, WorkflowError>) -> Void)
 }
 
 struct NodeInput {
     let arg: String?
-    let modifiers: NSEvent.ModifierFlags
-    let variables: [String: String]
+    let modifiers: NSEvent.ModifierFlags    // 用户按 ↩ 那一刻的修饰键
 }
 
 enum NodeOutput {
-    case items([AlfredItem])    // scriptfilter / listfilter,等待用户选
-    case forward(arg: String?)  // keyword / utility / 选中后的 scriptfilter
-    case terminal               // action 完成,链路结束
+    case items([AlfredItem])
+    case forward(arg: String?, variables: [String: String])    // 上传变量给下游
+    case terminal
 }
 
-// 整张图
+// === 上下文(在一次 walk 中可变)===
+
+final class WorkflowContext {
+    let graph: WorkflowGraph
+    let bundleId: String
+    var variables: [String: String]    // 起步 = PluginConfigStore.merged;
+                                         //   每次节点 .forward(variables:) 时合并 ∪ 新值
+    // 注:不再持有"共享 ScriptProcessRunner" —— 每次脚本执行新建一个
+    // Process(X1 决议)。简化生命周期 + 让 action.* 在窗口关闭后能自然
+    // detach 跑完(X2 决议)。
+}
+
+// === 错误 ===
+
+struct WorkflowError: Error {
+    enum Kind {
+        case nodeFailed(stderr: String, exitCode: Int32)
+        case decodeFailed(raw: String, underlying: Error)
+        case launchFailed(Error)
+        case missingNode(uid: String)
+        case unsupportedNodeType(String)
+    }
+    let kind: Kind
+    let nodeUID: String?
+    let nodeType: String?    // "action.script" 等,UI 显示"在 X 节点失败"
+}
+
+// === UI 意图(单向流向 UI)===
+
+enum UIIntent {
+    case showLoading
+    case showItems([AlfredItem])
+    case showError(WorkflowError)
+    case dismissAndPerform     // action 链路终结,关窗
+}
+
+// === 图 ===
+
 struct WorkflowGraph {
     let bundleId: String
-    let nodes: [String: WorkflowNode]      // UID → node
-    let edges: [String: [Edge]]             // sourceUID → outgoing
-    let entrypoints: [Entrypoint]           // (keyword, 入口节点 UID)
+    let nodes: [String: any WorkflowNode]    // UID → node
+    let edges: [String: [Edge]]               // sourceUID → outgoing
+    let entrypoints: [Entrypoint]
+    let variables: [String: String]            // manifest defaults(给 context 起步用)
+
     struct Edge {
         let destination: String
-        let modifiers: NSEvent.ModifierFlags    // 默认 .init() 表示无修饰
+        let modifiers: NSEvent.ModifierFlags    // [] = 默认边
+    }
+    struct Entrypoint {
+        let keyword: String
+        let nodeUID: String
     }
 }
 
-// 引擎
+// === 引擎 ===
+
 final class WorkflowExecutor {
-    func enter(graph: WorkflowGraph, entry: WorkflowNode, query: String, …) -> AsyncStream<UIIntent>
-    func walk(from: WorkflowNode, output: NodeOutput, modifiers: …, in: WorkflowGraph)
+    /// 启动一次 walk。intentHandler 立即收到 .showLoading,后续随节点
+    /// 执行陆续收到 items / error / dismissAndPerform。返回的 token
+    /// 用于"用户输入变化 → cancel"路径(影响范围:**仅 scriptfilter 入
+    /// 口节点**;一旦走到 action.* 阶段不再被外部 cancel 中断,见 X2)。
+    @discardableResult
+    func enter(graph: WorkflowGraph,
+               entry: any WorkflowNode,
+               query: String,
+               modifiers: NSEvent.ModifierFlags,
+               variables: [String: String],
+               intentHandler: @escaping (UIIntent) -> Void) -> Cancellable
+
+    // 内部:walk(from: node, output: NodeOutput, modifiers: …) 递归
+    // 每节点 execute 都开新 Process,terminationHandler 自带 detach
+    // 语义。
+}
+
+protocol Cancellable: AnyObject {
+    func cancel()
 }
 ```
 
-`UIIntent` 是引擎吐回 UI 层的指令:`showItems(...)` / `showLoading` / `showError(...)` / `closeAndPerform(...)`。
-UI 不再直接管"打开 URL 还是复制",只渲染引擎的意图。
+### 修饰键映射(A3 决议)
+
+Alfred 的 `connections.modifiers` 是 Int 位掩码、`mods` 字典的 key 是字符串,
+loader 一律转 `NSEvent.ModifierFlags`,引擎层只见原生类型:
+
+```
+connections.modifiers (Int):
+  0 = 默认 / 1 = cmd / 2 = alt / 4 = ctrl / 8 = shift / 16 = fn (可组合)
+mods 字典 key (String):
+  "cmd" / "alt" / "ctrl" / "shift" / "cmd+shift" / "cmd+alt" / ... 任意组合
+→ extension NSEvent.ModifierFlags {
+    static func fromAlfredEdgeMask(_ mask: Int) -> Self
+    static func fromAlfredModKey(_ key: String) -> Self
+  }
+```
+
+UI 不再直接管"打开 URL 还是复制",只渲染 `UIIntent`;打开/复制成为
+`action.openurl` / `action.copytoclipboard` 节点的内部行为。
 
 ---
 
@@ -134,7 +221,8 @@ UI 不再直接管"打开 URL 还是复制",只渲染引擎的意图。
 | `input.scriptfilter` | 跑 plugin 脚本拿 items | query, mods | `.items(...)` |
 | `input.keyword` | 直接转发 query | query | `.forward(arg: query)` |
 | `input.listfilter` | 静态 stringified-JSON items(`{var:NAME}` 展开后 JSON.decode)**或** `script` 动态产 | (无 / query) | `.items(...)` |
-| `action.script` | 跑脚本(stdin / env / arg) | arg | `.terminal` |
+| `utility.junction` | **纯 pass-through**,把上游 arg + variables 原封不动转发(plugin 常用作"连线集线器")| arg | `.forward(arg: arg)` |
+| `action.script` | 跑脚本(env 注入 context.variables + arg) | arg | `.terminal` |
 | `action.openurl` | `NSWorkspace.open(url)` | arg(URL) | `.terminal` |
 | `action.copytoclipboard` | pasteboard 写入 | arg | `.terminal` |
 
@@ -158,14 +246,51 @@ scriptfilter item 输出可携带:
 }
 ```
 
-引擎按"**选中 item 用哪个 arg + 走哪条边**"二维选择处理:
+### Codable 形状(A6 决议)
 
-1. 用户按 ↩ + 修饰键 X → 看 `item.mods[X]`
-2. 有 → 用 `mods[X].arg`(没设就用默认 `arg`);若 `mods[X].valid == false` → 静默无视
-3. 沿 `connections[scriptfilter-uid]` 选 `modifiers == X` 的边;无对应边时**不**回落到默认边(Alfred 行为)
+```swift
+extension AlfredItem {
+    let mods: [String: AlfredItemMod]?    // key: "cmd" / "alt" / "cmd+shift" / …
+    let variables: [String: String]?      // 选中此 item 时 variables 注入下游
+    let valid: Bool?                        // false = 灰显,Enter 不响应
+}
+
+struct AlfredItemMod: Decodable {
+    let arg: String?
+    let subtitle: String?
+    let valid: Bool?
+    let variables: [String: String]?      // 修饰键场景下专属变量注入
+}
+```
+
+### 引擎处理顺序
+
+1. 用户按 ↩ + 修饰键 X → 查 `item.mods[X]`
+2. 有且 `valid != false` → 用 `mods[X].arg`(没设就回落 `item.arg`);**`mods[X].variables`** 合并进 `context.variables`
+3. 沿 `connections[scriptfilter-uid]` 选 `modifiers == X` 的边;无对应边时**不**回落到默认边(对齐 Alfred)
 4. 把 arg 喂给下游节点
 
-`autocomplete` / `variables` / `valid` 等字段按需逐步加,MVP 只要 `mods.<key>.arg` 和 `mods.<key>.valid`。
+`autocomplete` / `quicklookurl` 等其他字段属于 §11 backlog,MVP 只要上述。
+
+### 变量传播规则(A7 决议)
+
+`context.variables` 是引擎一次 walk 中**累积可变**的状态:
+
+```
+起步     = PluginConfigStore.mergedVariables(forBundle: graph.bundleId)
+           // 即 userconfig defaults ∪ topLevel variables ∪ user overrides
+
+每跑一个节点,output: .forward(variables: V) 时:
+   context.variables = context.variables ∪ V    // V 覆盖同名
+
+scriptfilter / listfilter 用户选中 item 后:
+   context.variables ∪= item.variables ?? [:]
+   context.variables ∪= item.mods[modifierKey].variables ?? [:]
+
+每跑一次 action.script,env 注入用 当前 context.variables 的 snapshot
+```
+
+这跟 Alfred "variables propagate down the connection chain" 规则一致。
 
 ---
 
@@ -200,14 +325,39 @@ scriptfilter item 输出可携带:
 
 ---
 
-## 7. 待决定事项
+## 7. 决议要点
 
-- **同步 vs 异步:** 借这次引入 async/await 还是继续 callback?引擎本身用 async 更顺,但跟 `Process.terminationHandler` 桥接需要 `withCheckedContinuation`。倾向 async。
-- **错误对外形态:** 现 `AlfredRunnerError` 在 UI 层映射。新模型应该带"哪个节点 throw 的"信息,便于诊断 banner 显示"在 action.script 这步失败"。
-- **utility 节点 MVP:** Safari Control 没用 utility,但其他 plugin 常用 `argstartswith` 做 fallback 路由。MVP 是否带?**倾向不带**,先跑 Safari Control 6 个命令再说。
-- **Hotkey 节点扫不扫:** loader 解 `trigger.hotkey` 但 registry 不让它被触发?这样诊断更友好(显示"已识别但未启用")。或者完全 skip。**倾向解析但 skip 入口注册**,在 `PluginLoadFailure` 邻位加 `.unsupportedNode(type)`。
-- **入口节点不从 keyword 触发的情况:** 比如 file action / hotkey 入口。MVP 不支持(§8 已声明),但 loader 是否 silently skip 还是产 diagnostic?**倾向产 diagnostic**,跟现有 keyword 冲突 banner 同语言。
-- **AppleEvent → Alfred 失败的可观测性:** plugin 跑 `osascript -e 'tell application id "com.runningwithcrayons.Alfred" ...'` 时 osascript 会因为找不到 Alfred 而退出非零。是否在 stderr 模式匹配里加一条通用提示("此功能依赖 Alfred,本容器不支持")?这**不**违反零适配 —— 它是一条对 Alfred 通用 idiom 的反应,不针对任何 plugin。**倾向加**,跟现有 TCC 提示同位置。
+### A · 已锁(架构层,写代码前必须定的)
+
+| # | 议题 | 决议 | 出处 |
+|---|---|---|---|
+| A1 | 同步 vs 异步 | **维持 callback 风格**(与现有 `AlfredScriptFilterRunner` 一致),`execute(input:context:completion:)`;不引入 async/await。引擎层 walk 是手写递归 callback,执行通过 `Cancellable` token 控制 | §3 protocol |
+| A2 | 错误对外形态 | **`WorkflowError(kind:, nodeUID:, nodeType:)`**,UI 显示"在 X 节点失败" | §3 |
+| A3 | `Edge.modifiers` 表示 | **`NSEvent.ModifierFlags`**(原生);Loader 把 plist 的 Int 位掩码 / `mods` 字典 String key 都转成它 | §3 |
+| A4 | `UIIntent` case 集合 | `.showLoading` / `.showItems(...)` / `.showError(WorkflowError)` / `.dismissAndPerform`,共 4 个;由 `intentHandler: (UIIntent) -> Void` 闭包推送 | §3 |
+| A5 | `WorkflowContext` 字段 | `graph` + `bundleId` + **可变** `variables`(不再持有共享 ScriptProcessRunner,见 X1) | §3 |
+| A6 | `AlfredItemMod` Codable | `arg` / `subtitle` / `valid` / `variables` | §5 |
+| A7 | 变量传播规则 | 节点 `.forward(variables:)` 与 item / mod 上的 `variables` 字段都合并进 `context.variables`,沿链路向下游传(对齐 Alfred) | §5 |
+| A8 | `scriptargtype` 语义 | **MVP 维持现行 `{query}` 文本替换**;`stdin` / `env` 模式不实现,绝大多数 plugin 写 `{query}` literal,不依赖 stdin。需要 stdin 的列入 §11 backlog | — |
+
+### X · 行为细则(callback 模型下浮现的具体决议)
+
+| # | 议题 | 决议 |
+|---|---|---|
+| X1 | `ScriptProcessRunner` 生命周期 | **每次执行新建一个 Process**(不是全局共享 runner)。简化生命周期、避免 in-flight slot 互相挤占、让 X2 的 detach 自然成立 |
+| X2 | 窗口关闭时 in-flight 行为 | **scriptfilter 入口节点** → cancel(`Cancellable.cancel()` 调 `process.terminate()`);**action.\* 节点** → detach 跑完(`terminationHandler` 自然走完,UI 已经收到 `.dismissAndPerform`)。理由:用户按 Enter 是"我想要这件事发生",关窗不应阻止 |
+| X3 | Loading row 时机 | **立即** —— `intentHandler(.showLoading)` 在 `enter` 调用同步触发。不引入延迟阈值,避免快命中 plugin 出现"按一下闪一下" |
+| X4 | scriptfilter → scriptfilter 链式 | **MVP 不支持** —— walk 时若下游也是 scriptfilter 节点,产 `WorkflowError(.unsupportedNodeType(chain))`,进 §11 backlog |
+| X5 | `utility.junction` 是否 MVP | **进 MVP** —— 实现成本极低(~10 行 pass-through),但 plugin 常用作"连线集线器",不实现会导致大量 plugin 在中间断链 |
+
+### B · 实施期细化(留"倾向"标记,遇到再细化)
+
+- **utility 节点 MVP 不带** —— Safari Control 不依赖;其他 plugin 常用 `argstartswith` 做 fallback,真踩到再补
+- **Hotkey 节点解析但 skip 入口注册** —— 在 `PluginLoadFailure` 邻位加 `.unsupportedNode(type)`,Settings banner 显示"已识别但未启用"
+- **File-action / 其他非 keyword 入口** —— 同上,统一走 `unsupportedNode` diagnostic
+- **AppleEvent → Alfred 失败提示** —— stderr 模式匹配 `tell application id "com.runningwithcrayons.Alfred"` / 退出码,加一条通用 hint "此功能依赖 Alfred 本体"。**不违反零适配**:对 Alfred 通用 idiom 的反应,不针对任何 plugin
+- **item `valid: false`** —— UI cell 加 `disabled` 视觉,Enter 不响应
+- **空 items 列表** —— 显示 "No results" 占位行,对齐 Alfred
 
 ---
 
@@ -246,5 +396,23 @@ scriptfilter item 输出可携带:
 
 ## 10. 风险与回滚
 
-- **§9-3 是关键关卡** —— 如果 executor 骨架塞不进现有 callback-based UI 流而需要大面积异步重写,回退到现有架构 + 仅做"P2 加 mods + P3 加部分 connections"的渐进打补丁路线,接受 Safari Control 部分命令永久不支持。
+- **§9-3 是关键关卡** —— callback 风格(A1)与现有 UI 流一致,主要风险点变成"递归 callback 嵌套层数"。Loader 必须保证 graph 是有限深度且无环;walker 实现要在每层 callback 检测 cancellation token,否则用户输入变化时旧链路会继续跑。回退方案:仅做"加 mods + 部分 connections"的渐进打补丁路线,接受 Safari Control 部分命令永久不支持。
 - **重命名风险** —— `Workflow` 出现在 13+ 文件,改名爆破半径大。建议 §9-8 单独一个 commit,前面所有步骤先用别名(`typealias WorkflowEntry = Workflow` 反过来)兼容,最后一刀切。
+
+---
+
+## 11. Post-MVP Backlog
+
+MVP 跑通后视用户实际踩坑情况按需做的 C 类事项,统一登记在此:
+
+- `scriptargtype` 完整支持(stdin / 输入变量两种 query 传递模式)
+- scriptfilter 输出的 `cache` / `loosereload` / `rerun`(Alfred 智能缓存)
+- item 的 `autocomplete`(Tab 补全)
+- item 的 `quicklookurl`(空格 Quick Look)
+- scriptfilter → scriptfilter 链式遍历(多级流水,X4 决议遇到时产 unsupported 错误)
+- 多节点 loading 进度展示(分阶段)
+- 走到 action 中途 Esc 取消(MVP 关窗即 detach,见 X2;主动取消进 backlog)
+- 其余 utility 节点(`argstartswith` / `conditional`,`junction` 已进 MVP)—— 真踩到再补
+- `action.runscript` 独立 runtime 模式
+
+新踩到的事项加在这一节下,不要进 §1.5 类的"已交付 follow-up"或 §8 "不做"。
