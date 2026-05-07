@@ -44,7 +44,11 @@ extension ViewController: NSSearchFieldDelegate {
         searchScrollView.isHidden = false
         scrollView.isHidden = true
 
-        if let match = WorkflowRegistry.shared.match(input: q) {
+        // Match against the raw text (not the trimmed `q`) so that
+        // "shi " with a trailing space still resolves to keyword=shi,
+        // query="" — Alfred fires the script filter on bare keyword+
+        // space and plugins can render their initial result set.
+        if let match = WorkflowRegistry.shared.match(input: text) {
             runAlfred(workflow: match.workflow, query: match.query)
             return
         }

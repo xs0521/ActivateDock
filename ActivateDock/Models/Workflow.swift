@@ -26,6 +26,7 @@ struct Workflow {
     let directory: URL
     let keyword: String
     let scriptCommand: String
+    let scriptLanguageType: Int?
     let variables: [String: String]
     let declaredSecretVariables: Set<String>
 

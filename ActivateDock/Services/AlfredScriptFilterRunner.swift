@@ -37,8 +37,18 @@ final class AlfredScriptFilterRunner {
         inflight = process
         lock.unlock()
 
-        process.executableURL = URL(fileURLWithPath: "/bin/sh")
-        process.arguments = ["-c", workflow.substitutedCommand(query: query)]
+        let plan: ScriptInvocation.Plan
+        do {
+            plan = try ScriptInvocation.plan(for: workflow, query: query)
+        } catch {
+            lock.lock()
+            if inflight === process { inflight = nil }
+            lock.unlock()
+            DispatchQueue.main.async { completion(.failure(.launchFailed(error))) }
+            return
+        }
+        process.executableURL = plan.executable
+        process.arguments = plan.arguments
         process.currentDirectoryURL = workflow.directory
 
         var mergedEnv = ProcessInfo.processInfo.environment
@@ -67,6 +77,20 @@ final class AlfredScriptFilterRunner {
             }
         }
 
+        // Drain stdout the same way. Pipes have a ~16KB OS buffer; if
+        // the script's output exceeds that and nobody reads, the
+        // script's write() blocks → process never exits →
+        // terminationHandler never fires → UI sticks on "loading".
+        let stdoutLock = NSLock()
+        var stdoutBuffer = Data()
+        outPipe.fileHandleForReading.readabilityHandler = { handle in
+            let chunk = handle.availableData
+            guard !chunk.isEmpty else { return }
+            stdoutLock.lock()
+            stdoutBuffer.append(chunk)
+            stdoutLock.unlock()
+        }
+
         process.terminationHandler = { [weak self] proc in
             guard let self else { return }
 
@@ -75,6 +99,10 @@ final class AlfredScriptFilterRunner {
             if isLatest { self.inflight = nil }
             self.lock.unlock()
 
+            if let cleanup = plan.cleanupURL {
+                try? FileManager.default.removeItem(at: cleanup)
+            }
+
             errPipe.fileHandleForReading.readabilityHandler = nil
             let trailingErr = errPipe.fileHandleForReading.availableData
             stderrLock.lock()
@@ -82,7 +110,12 @@ final class AlfredScriptFilterRunner {
             let errString = String(data: stderrBuffer, encoding: .utf8) ?? ""
             stderrLock.unlock()
 
-            let outData = outPipe.fileHandleForReading.readDataToEndOfFile()
+            outPipe.fileHandleForReading.readabilityHandler = nil
+            let trailingOut = outPipe.fileHandleForReading.availableData
+            stdoutLock.lock()
+            if !trailingOut.isEmpty { stdoutBuffer.append(trailingOut) }
+            let outData = stdoutBuffer
+            stdoutLock.unlock()
 
             guard isLatest else {
                 DispatchQueue.main.async { completion(.failure(.cancelled)) }
@@ -113,6 +146,9 @@ final class AlfredScriptFilterRunner {
             lock.lock()
             if inflight === process { inflight = nil }
             lock.unlock()
+            if let cleanup = plan.cleanupURL {
+                try? FileManager.default.removeItem(at: cleanup)
+            }
             DispatchQueue.main.async { completion(.failure(.launchFailed(error))) }
         }
     }

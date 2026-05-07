@@ -43,6 +43,9 @@ extension ViewController {
         case .launchFailed(let e):
             return ("\(workflow.name) · 启动失败", e.localizedDescription)
         case .nonZeroExit(let code, let stderr):
+            if let hint = permissionHint(stderr: stderr) {
+                return ("\(workflow.name) · 需要权限", hint)
+            }
             let firstLine = stderr
                 .split(whereSeparator: \.isNewline)
                 .first
@@ -56,5 +59,24 @@ extension ViewController {
         case .cancelled:
             return ("", "")
         }
+    }
+
+    // Maps known macOS TCC error fingerprints to an actionable hint.
+    // TCC denials surface through stderr text (the OS doesn't give us
+    // a typed errno), so we keyword-match. The full stderr is still in
+    // NSLog under the [plugin:<bundleId>] tag for power-user debugging.
+    private static func permissionHint(stderr: String) -> String? {
+        let lower = stderr.lowercased()
+        if lower.contains("authorization denied") ||
+           lower.contains("operation not permitted") {
+            return "系统设置 → 隐私与安全性 → 完全磁盘访问权限 → 添加 ActivateDock,然后重试。"
+        }
+        if lower.contains("not authorized to send apple events") ||
+           lower.contains("not allowed to send apple events") ||
+           lower.contains("error: -1743") ||
+           lower.contains("(-1743)") {
+            return "系统设置 → 隐私与安全性 → 自动化 → 给 ActivateDock 勾选目标 app,然后重试。"
+        }
+        return nil
     }
 }

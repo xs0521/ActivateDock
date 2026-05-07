@@ -64,9 +64,11 @@ final class WorkflowRegistry {
         guard let space = input.firstIndex(of: " ") else { return nil }
         let keyword = input[..<space].lowercased()
         guard let w = byKeyword[String(keyword)] else { return nil }
+        // An empty query is intentional: Alfred fires the script filter
+        // as soon as the keyword + a single space is typed, so plugins
+        // can render initial state (recent items, defaults, etc).
         let query = input[input.index(after: space)...]
             .trimmingCharacters(in: .whitespacesAndNewlines)
-        guard !query.isEmpty else { return nil }
         return (w, query)
     }
 

@@ -56,9 +56,12 @@ final class PluginsSettingsView: NSView, NSTextFieldDelegate {
             stack.addArrangedSubview(makeDivider())
         }
 
+        stack.addArrangedSubview(makeImportRow())
+        stack.addArrangedSubview(makeDivider())
+
         let groups = pluginGroups()
         if groups.isEmpty {
-            stack.addArrangedSubview(makeMutedLabel("No plugins installed yet."))
+            stack.addArrangedSubview(makeMutedLabel("还没有插件,点上方按钮导入一个 .alfredworkflow / .zip 或插件目录。"))
             return
         }
         for (i, group) in groups.enumerated() {

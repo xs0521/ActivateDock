@@ -66,16 +66,19 @@ enum AlfredWorkflowLoader {
         let bundleId = manifest.bundleid ?? directory.lastPathComponent
         let displayName = manifest.name ?? directory.lastPathComponent
         let description = manifest.description?.trimmingCharacters(in: .whitespacesAndNewlines)
-        let variables = manifest.variables ?? [:]
+        let effectiveVariables = mergedVariables(
+            userConfig: manifest.userconfigurationconfig,
+            topLevel: manifest.variables
+        )
         let declaredSecrets = Set(manifest.secretvariables ?? [])
 
         var result = LoadResult()
         for obj in objects where obj.isScriptFilter {
             guard let cfg = obj.config,
-                  let keyword = cfg.keyword?.trimmingCharacters(in: .whitespaces),
-                  !keyword.isEmpty,
-                  let script = cfg.script?.trimmingCharacters(in: .whitespacesAndNewlines),
-                  !script.isEmpty
+                  let rawKeyword = cfg.keyword?.trimmingCharacters(in: .whitespaces),
+                  !rawKeyword.isEmpty,
+                  let rawScript = cfg.script?.trimmingCharacters(in: .whitespacesAndNewlines),
+                  !rawScript.isEmpty
             else {
                 NSLog("[AlfredWorkflowLoader] scriptfilter in \(directory.lastPathComponent) missing keyword or script, skipping")
                 result.failures.append(PluginLoadFailure(
@@ -84,6 +87,17 @@ enum AlfredWorkflowLoader {
                 ))
                 continue
             }
+            let keyword = expand(rawKeyword, with: effectiveVariables)
+                .trimmingCharacters(in: .whitespaces)
+            guard !keyword.isEmpty else {
+                NSLog("[AlfredWorkflowLoader] scriptfilter in \(directory.lastPathComponent) keyword '\(rawKeyword)' resolved to empty, skipping")
+                result.failures.append(PluginLoadFailure(
+                    directory: directory,
+                    reason: .missingScriptFilterFields(objectUid: obj.uid)
+                ))
+                continue
+            }
+            let script = expand(rawScript, with: effectiveVariables)
             result.workflows.append(Workflow(
                 bundleId: bundleId,
                 name: displayName,
@@ -91,9 +105,45 @@ enum AlfredWorkflowLoader {
                 directory: directory,
                 keyword: keyword,
                 scriptCommand: script,
-                variables: variables,
+                scriptLanguageType: cfg.type,
+                variables: effectiveVariables,
                 declaredSecretVariables: declaredSecrets
             ))
+        }
+        return result
+    }
+
+    private static func mergedVariables(
+        userConfig: [UserConfigEntry]?,
+        topLevel: [String: String]?
+    ) -> [String: String] {
+        var result: [String: String] = [:]
+        for entry in userConfig ?? [] {
+            guard let key = entry.variable, !key.isEmpty else { continue }
+            if let str = entry.config?.default {
+                result[key] = str
+            } else if let num = entry.config?.defaultvalue {
+                let isWhole = num.truncatingRemainder(dividingBy: 1) == 0
+                result[key] = isWhole ? String(Int(num)) : String(num)
+            }
+        }
+        // top-level `variables` is the user/installer's last word and
+        // overrides userconfig defaults when both define the same key.
+        for (k, v) in topLevel ?? [:] { result[k] = v }
+        return result
+    }
+
+    private static func expand(_ template: String, with vars: [String: String]) -> String {
+        guard template.contains("{var:") else { return template }
+        let pattern = #"\{var:([A-Za-z_][A-Za-z0-9_]*)\}"#
+        guard let regex = try? NSRegularExpression(pattern: pattern) else { return template }
+        let ns = template as NSString
+        let matches = regex.matches(in: template, range: NSRange(location: 0, length: ns.length))
+        var result = template
+        for match in matches.reversed() {
+            let name = ns.substring(with: match.range(at: 1))
+            let replacement = vars[name] ?? ""
+            result = (result as NSString).replacingCharacters(in: match.range, with: replacement)
         }
         return result
     }
