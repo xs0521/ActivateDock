@@ -20,6 +20,8 @@ extension ViewController: NSTableViewDataSource, NSTableViewDelegate {
             switch searchResults[row] {
             case .app(let app): cell.configure(with: app)
             case .alfred(let item): cell.configure(alfredItem: item)
+            case .loading: cell.configureLoading()
+            case .error(let title, let detail): cell.configureError(title: title, detail: detail)
             }
         }
         cell.setSelected(tableView.selectedRow == row)

@@ -44,7 +44,7 @@ extension ViewController: NSWindowDelegate {
             searchHintLabel.isHidden = true
             return
         }
-        guard let hint = SearchCommand.hint(for: text) else {
+        guard let hint = SearchCommand.hint(for: text) ?? Self.pluginHint(for: text) else {
             searchHintLabel.isHidden = true
             return
         }
@@ -53,6 +53,15 @@ extension ViewController: NSWindowDelegate {
         searchHintLeadingConstraint?.constant = ceil(width)
         searchHintLabel.stringValue = hint
         searchHintLabel.isHidden = false
+    }
+
+    private static func pluginHint(for text: String) -> String? {
+        guard let space = text.firstIndex(of: " ") else { return nil }
+        let suffix = text[text.index(after: space)...]
+        guard suffix.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty else { return nil }
+        let keyword = String(text[..<space])
+        guard WorkflowRegistry.shared.workflow(forKeyword: keyword) != nil else { return nil }
+        return "输入查询内容"
     }
 
     func windowWillReturnFieldEditor(_ sender: NSWindow, to client: Any?) -> Any? {

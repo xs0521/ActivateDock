@@ -59,35 +59,6 @@ extension ViewController: NSSearchFieldDelegate {
         }
     }
 
-    private func runAlfred(workflow: Workflow, query: String) {
-        alfredRunner.run(workflow: workflow, query: query) { [weak self] result in
-            guard let self else { return }
-            switch result {
-            case .success(let items):
-                let resolved = workflow.resolvingIconPaths(in: items)
-                self.searchResults = resolved.map(SearchRow.alfred)
-                self.searchResultsTable.reloadData()
-                if !self.searchResults.isEmpty {
-                    self.searchResultsTable.selectRowIndexes([0], byExtendingSelection: false)
-                    self.searchResultsTable.scrollRowToVisible(0)
-                }
-            case .failure(.cancelled):
-                return
-            case .failure(let err):
-                let detail: String
-                switch err {
-                case .launchFailed(let e): detail = "launch failed: \(e.localizedDescription)"
-                case .nonZeroExit(let code, let stderr): detail = "exit \(code): \(stderr.prefix(200))"
-                case .decodeFailed(_, let raw): detail = "decode failed. raw: \(raw.prefix(200))"
-                case .cancelled: return
-                }
-                let item = AlfredItem(title: "[error] yd plugin", subtitle: detail, arg: nil, icon: nil)
-                self.searchResults = [.alfred(item)]
-                self.searchResultsTable.reloadData()
-            }
-        }
-    }
-
     func controlTextDidChange(_ obj: Notification) {
         searchDebounceWorkItem?.cancel()
         let text = searchField.stringValue
@@ -101,7 +72,14 @@ extension ViewController: NSSearchFieldDelegate {
             self?.updateForSearchText(text)
         }
         searchDebounceWorkItem = work
-        DispatchQueue.main.asyncAfter(deadline: .now() + 0.12, execute: work)
+        let delay = Self.debounceDelay(for: text)
+        DispatchQueue.main.asyncAfter(deadline: .now() + delay, execute: work)
+    }
+
+    private static func debounceDelay(for text: String) -> TimeInterval {
+        guard let space = text.firstIndex(of: " ") else { return 0.12 }
+        let keyword = String(text[..<space])
+        return WorkflowRegistry.shared.workflow(forKeyword: keyword) != nil ? 0.25 : 0.12
     }
 
     func control(_ control: NSControl, textView: NSTextView, doCommandBy commandSelector: Selector) -> Bool {
@@ -171,6 +149,8 @@ extension ViewController: NSSearchFieldDelegate {
                 NSPasteboard.general.clearContents()
                 NSPasteboard.general.setString(arg, forType: .string)
             }
+        case .loading, .error:
+            return
         }
         searchField.stringValue = ""
         updateForSearchText("")

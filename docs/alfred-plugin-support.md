@@ -14,7 +14,7 @@
 | Roadmap doc | ✅ 完成 | `b1f009d` | 本文件首版 |
 | **B 路径** | ✅ 完成 | `5a4e972` | info.plist 解析 + Workflow Registry |
 | **A 路径** | ✅ 完成 | `433cfd7` | 真 Youdao 插件 + Settings 配置 UI |
-| **C 路径** | ⏳ 待做 | — | UX 打磨(hint / loading / 错误美化) |
+| **C 路径** | ✅ 完成 | _待提交_ | UX 打磨(hint / loading / 错误美化 / 防抖调长) |
 
 **已识别但未规划的 follow-up** 见 §1.5。
 
@@ -71,9 +71,9 @@ Swift 输入 "yd hello"
 2. ✅ ~~单 runner 实例,无 plugin 注册表~~ — B 路径加 WorkflowRegistry。
 3. ✅ ~~没有 info.plist 解析~~ — B 路径加 AlfredWorkflowLoader。
 4. ✅ ~~icon 路径相对解析未做~~ — B 路径在 `Workflow.resolvingIconPaths` 里 resolve。
-5. ⏳ **stderr 攒批读取** → 调试真插件慢,看不到实时日志。(C 候选)
-6. ⏳ **错误 UX 简陋** → 只是把 `[error]` 当一行 item 显示。(C 候选)
-7. ⏳ **没有输入提示** → 用户不知道当前 keyword 等什么。(C 候选)
+5. ⏳ **stderr 攒批读取** → 调试真插件慢,看不到实时日志。(C 后仍未做,优先级低)
+6. ✅ ~~错误 UX 简陋~~ — C 路径加专用 error cell(红色 SF symbol + 红色标题 + 截断细节)。
+7. ✅ ~~没有输入提示~~ — C 路径让 plugin keyword 复用既有 hint 通道,文案取自 manifest description。
 
 ### 1.5 已识别的 follow-up(未规划进任何路径)
 
@@ -131,17 +131,27 @@ A 路径完成后衍生的工程性事项,优先级跟 C 类似,但属于"打磨
 
 **工作量**:~2~3 小时(瓶颈在 Alfred plist 的复杂 schema)
 
-### C. UX 打磨 ⏳ 待做
+### C. UX 打磨 ✅ 已完成
 
 **目的**:让 alfred 路径的输入体验跟现有 google/baidu 一致。
 
-**做什么**:
-- 输入纯 `yd `(无 query)显示 hint:"yd: 输入要翻译的词"
-- Loading 态:正在执行外部脚本时,显示 spinner 或 "loading..." 行
-- 错误显示美化:专用的 error cell(图标 + 颜色 + 折叠技术细节)
-- 防抖时长针对外部进程调长(目前 120ms 偏短)
+**实际交付**:
+- ✅ Hint:`updateSearchHint` 在内置 keyword 没命中时回落到 `WorkflowRegistry`,
+  plugin keyword 统一显示 "输入查询内容"(跟 google/baidu/bing 的 hint 风格一致;
+  manifest `description` 留给 Settings UI 用)。
+- ✅ Loading 态:`SearchRow.loading` + `SearchResultCell.configureLoading()`
+  (`NSProgressIndicator` spinner + "loading…")。`runAlfred` 启动前先放
+  loading row,完成后被结果/错误替换。
+- ✅ 错误 cell:`SearchRow.error(title, detail)` + `configureError(...)`
+  (`exclamationmark.triangle.fill` 红色 SF symbol + 红色标题 + 截断 180 字
+  的细节)。`AlfredRunnerError` → 中文标题 + 折叠的技术细节。
+- ✅ 防抖:`debounceDelay(for:)` 命中 plugin keyword 时拉长到 250ms,
+  其余路径维持 120ms。
 
-**工作量**:~1 小时
+**衍生重构**:`runAlfred` + `errorPresentation` 抽到新文件
+`ViewController+SearchAlfred.swift`,以满足 200 行/文件上限。
+
+**工作量**:~1 小时(实际)
 
 ---
 
@@ -153,9 +163,9 @@ A 路径完成后衍生的工程性事项,优先级跟 C 类似,但属于"打磨
 |---|---|---|
 | **B 先** | 架构验证比单点验证更有价值。先把"通用性"打通,A 就成顺路的事。 | ✅ commit `5a4e972` |
 | **A 跟在 B 后** | B 完成后,跑真 Youdao = "把改过的 plugin 放进 plugin 目录 + 配 env",几乎零工作量。 | ✅ commit `433cfd7`(顺手扩展了 Settings UI) |
-| **C 最后** | UX 容易反复,在架构稳定前打磨容易做无用功。 | ⏳ 候选 |
+| **C 最后** | UX 容易反复,在架构稳定前打磨容易做无用功。 | ✅ _待提交_ |
 
-**当前候选**:C 路径 / F1+F2(凭证安全) / F3+F4(UI 加固),三选一开下一阶段。
+**当前候选**:F1+F2(凭证安全) / F3+F4(UI 加固),二选一开下一阶段。
 
 ---
 

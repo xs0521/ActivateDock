@@ -31,6 +31,10 @@ final class WorkflowRegistry {
         NSLog("[WorkflowRegistry] loaded \(byKeyword.count) workflow(s): \(byKeyword.keys.sorted())")
     }
 
+    func workflow(forKeyword keyword: String) -> Workflow? {
+        byKeyword[keyword.lowercased()]
+    }
+
     func match(input: String) -> (workflow: Workflow, query: String)? {
         guard let space = input.firstIndex(of: " ") else { return nil }
         let keyword = input[..<space].lowercased()
