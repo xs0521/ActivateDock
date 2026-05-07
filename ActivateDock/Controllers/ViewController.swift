@@ -16,6 +16,9 @@ final class ViewController: NSViewController {
     let searchField = NSSearchField()
     let searchFieldBox = NSVisualEffectView()
     let searchClearButton = NSButton()
+    let searchHintLabel = NSTextField(labelWithString: "")
+    var searchHintLeadingConstraint: NSLayoutConstraint?
+    let searchFieldEditor = SearchFieldEditor()
     let searchBackground = NSVisualEffectView()
     let searchScrollView = NSScrollView()
     let searchResultsTable = NSTableView()

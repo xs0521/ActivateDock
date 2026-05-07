@@ -7,76 +7,6 @@ import Cocoa
 
 extension ViewController: NSSearchFieldDelegate {
 
-    func setupSearch() {
-        searchField.placeholderString = "search"
-        searchField.font = .systemFont(ofSize: 22)
-        searchField.sendsWholeSearchString = true
-        searchField.sendsSearchStringImmediately = false
-        searchField.isBezeled = false
-        searchField.drawsBackground = false
-        searchField.focusRingType = .none
-        (searchField.cell as? NSSearchFieldCell)?.searchButtonCell = nil
-        (searchField.cell as? NSSearchFieldCell)?.cancelButtonCell = nil
-        searchField.delegate = self
-        searchField.target = self
-        searchField.action = #selector(handleSearchSubmit(_:))
-
-        searchClearButton.isBordered = false
-        searchClearButton.bezelStyle = .regularSquare
-        searchClearButton.imagePosition = .imageOnly
-        searchClearButton.image = NSImage(systemSymbolName: "xmark.circle.fill", accessibilityDescription: "Clear")
-        searchClearButton.contentTintColor = .secondaryLabelColor
-        searchClearButton.target = self
-        searchClearButton.action = #selector(handleSearchClear(_:))
-        searchClearButton.isHidden = true
-        searchClearButton.setButtonType(.momentaryChange)
-
-        searchFieldBox.material = .menu
-        searchFieldBox.blendingMode = .withinWindow
-        searchFieldBox.state = .active
-        searchFieldBox.wantsLayer = true
-        searchFieldBox.layer?.cornerRadius = 20
-        searchFieldBox.layer?.masksToBounds = true
-        searchFieldBox.alphaValue = 0.75
-
-        searchBackground.material = .menu
-        searchBackground.blendingMode = .withinWindow
-        searchBackground.state = .active
-        searchBackground.wantsLayer = true
-        searchBackground.layer?.cornerRadius = 12
-        searchBackground.layer?.masksToBounds = true
-        searchBackground.alphaValue = 0.75
-        searchBackground.isHidden = true
-
-        searchScrollView.drawsBackground = false
-        searchScrollView.hasVerticalScroller = true
-        searchScrollView.hasHorizontalScroller = false
-        searchScrollView.automaticallyAdjustsContentInsets = false
-        searchScrollView.scrollerStyle = .overlay
-        searchScrollView.wantsLayer = true
-        searchScrollView.layer?.cornerRadius = 12
-        searchScrollView.layer?.masksToBounds = true
-        searchScrollView.isHidden = true
-
-        let column = NSTableColumn(identifier: NSUserInterfaceItemIdentifier("name"))
-        column.resizingMask = [.autoresizingMask]
-        searchResultsTable.addTableColumn(column)
-        searchResultsTable.headerView = nil
-        searchResultsTable.style = .plain
-        searchResultsTable.backgroundColor = .clear
-        searchResultsTable.gridStyleMask = []
-        searchResultsTable.intercellSpacing = NSSize(width: 0, height: 4)
-        searchResultsTable.rowHeight = 44
-        searchResultsTable.allowsEmptySelection = false
-        searchResultsTable.allowsMultipleSelection = false
-        searchResultsTable.selectionHighlightStyle = .none
-        searchResultsTable.dataSource = self
-        searchResultsTable.delegate = self
-        searchResultsTable.target = self
-        searchResultsTable.doubleAction = #selector(handleSearchSubmit(_:))
-        searchScrollView.documentView = searchResultsTable
-    }
-
     func loadInstalledApps() {
         DispatchQueue.global(qos: .userInitiated).async { [weak self] in
             let apps = InstalledAppsCatalog.loadAll()
@@ -98,6 +28,7 @@ extension ViewController: NSSearchFieldDelegate {
         searchDebounceWorkItem?.cancel()
         searchDebounceWorkItem = nil
         searchClearButton.isHidden = text.isEmpty
+        updateSearchHint(for: text)
         let q = text.trimmingCharacters(in: .whitespacesAndNewlines)
         if q.isEmpty {
             searchResults = []
@@ -122,6 +53,7 @@ extension ViewController: NSSearchFieldDelegate {
         searchDebounceWorkItem?.cancel()
         let text = searchField.stringValue
         searchClearButton.isHidden = text.isEmpty
+        updateSearchHint(for: text)
         if text.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty {
             updateForSearchText(text)
             return
@@ -162,16 +94,23 @@ extension ViewController: NSSearchFieldDelegate {
         searchResultsTable.scrollRowToVisible(next)
     }
 
-    @objc private func handleSearchClear(_ sender: Any?) {
+    @objc func handleSearchClear(_ sender: Any?) {
         searchField.stringValue = ""
         updateForSearchText("")
         view.window?.makeFirstResponder(searchField)
     }
 
-    @objc private func handleSearchSubmit(_ sender: Any?) {
+    @objc func handleSearchSubmit(_ sender: Any?) {
         let trimmed = searchField.stringValue.trimmingCharacters(in: .whitespacesAndNewlines)
         if trimmed.isEmpty {
             updateForSearchText("")
+            return
+        }
+        if let command = SearchCommand.parse(trimmed) {
+            NSWorkspace.shared.open(command.url)
+            searchField.stringValue = ""
+            updateForSearchText("")
+            view.window?.orderOut(nil)
             return
         }
         let row: Int

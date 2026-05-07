@@ -9,6 +9,7 @@ extension ViewController {
 
     func configureWindowChrome() {
         guard let window = view.window else { return }
+        window.delegate = self
         window.titleVisibility = .hidden
         window.titlebarAppearsTransparent = true
         window.toolbar = nil

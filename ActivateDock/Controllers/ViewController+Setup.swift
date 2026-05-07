@@ -64,6 +64,78 @@ extension ViewController {
         ])
     }
 
+    func setupSearch() {
+        searchField.placeholderString = "search"
+        searchField.font = .systemFont(ofSize: 22)
+        searchField.sendsWholeSearchString = true
+        searchField.sendsSearchStringImmediately = false
+        searchField.isBezeled = false
+        searchField.drawsBackground = false
+        searchField.focusRingType = .none
+        (searchField.cell as? NSSearchFieldCell)?.searchButtonCell = nil
+        (searchField.cell as? NSSearchFieldCell)?.cancelButtonCell = nil
+        searchField.delegate = self
+        searchField.target = self
+        searchField.action = #selector(handleSearchSubmit(_:))
+
+        searchClearButton.isBordered = false
+        searchClearButton.bezelStyle = .regularSquare
+        searchClearButton.imagePosition = .imageOnly
+        searchClearButton.image = NSImage(systemSymbolName: "xmark.circle.fill", accessibilityDescription: "Clear")
+        searchClearButton.contentTintColor = .secondaryLabelColor
+        searchClearButton.target = self
+        searchClearButton.action = #selector(handleSearchClear(_:))
+        searchClearButton.isHidden = true
+        searchClearButton.setButtonType(.momentaryChange)
+
+        searchFieldBox.material = .menu
+        searchFieldBox.blendingMode = .withinWindow
+        searchFieldBox.state = .active
+        searchFieldBox.wantsLayer = true
+        searchFieldBox.layer?.cornerRadius = 20
+        searchFieldBox.layer?.masksToBounds = true
+        searchFieldBox.alphaValue = 0.75
+
+        searchBackground.material = .menu
+        searchBackground.blendingMode = .withinWindow
+        searchBackground.state = .active
+        searchBackground.wantsLayer = true
+        searchBackground.layer?.cornerRadius = 12
+        searchBackground.layer?.masksToBounds = true
+        searchBackground.alphaValue = 0.75
+        searchBackground.isHidden = true
+
+        searchScrollView.drawsBackground = false
+        searchScrollView.hasVerticalScroller = true
+        searchScrollView.hasHorizontalScroller = false
+        searchScrollView.automaticallyAdjustsContentInsets = false
+        searchScrollView.scrollerStyle = .overlay
+        searchScrollView.wantsLayer = true
+        searchScrollView.layer?.cornerRadius = 12
+        searchScrollView.layer?.masksToBounds = true
+        searchScrollView.isHidden = true
+
+        let column = NSTableColumn(identifier: NSUserInterfaceItemIdentifier("name"))
+        column.resizingMask = [.autoresizingMask]
+        searchResultsTable.addTableColumn(column)
+        searchResultsTable.headerView = nil
+        searchResultsTable.style = .plain
+        searchResultsTable.backgroundColor = .clear
+        searchResultsTable.gridStyleMask = []
+        searchResultsTable.intercellSpacing = NSSize(width: 0, height: 4)
+        searchResultsTable.rowHeight = 44
+        searchResultsTable.allowsEmptySelection = false
+        searchResultsTable.allowsMultipleSelection = false
+        searchResultsTable.selectionHighlightStyle = .none
+        searchResultsTable.dataSource = self
+        searchResultsTable.delegate = self
+        searchResultsTable.target = self
+        searchResultsTable.doubleAction = #selector(handleSearchSubmit(_:))
+        searchScrollView.documentView = searchResultsTable
+
+        setupSearchHint()
+    }
+
     func setupCollectionView() {
         let layout = NSCollectionViewFlowLayout()
         layout.scrollDirection = .vertical
