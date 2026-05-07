@@ -9,6 +9,21 @@
 
 ---
 
+## 设计原则:零 plugin 适配代码
+
+引擎对所有 plugin 一视同仁,**不为任何具体 plugin 写专属分支**。所有节点
+类型、所有 connections / mods 行为按 Alfred 的通用契约处理。
+
+当某个 plugin 用了我们未实现的 Alfred 内部能力(典型:plugin 通过
+`tell application id "com.runningwithcrayons.Alfred" to search ...`
+让 Alfred 把 arg 回填搜索框,实现 `⌥↩ Edit` 这种交互),我们让它**显式失
+败**(error cell 给运行时报错)而不是定向打补丁 —— 牺牲那一条特性,保住可
+演化性。
+
+这条原则的实际后果会在 §8 列出。
+
+---
+
 ## 状态
 
 未开工。本文档定义工作范围与切片,实施时按 §9 顺序逐步落地。
@@ -118,7 +133,7 @@ UI 不再直接管"打开 URL 还是复制",只渲染引擎的意图。
 |---|---|---|---|
 | `input.scriptfilter` | 跑 plugin 脚本拿 items | query, mods | `.items(...)` |
 | `input.keyword` | 直接转发 query | query | `.forward(arg: query)` |
-| `input.listfilter` | 渲染 `config.fields` 静态列表(或 `script` 动态产) | (无 / query) | `.items(...)` |
+| `input.listfilter` | 静态 stringified-JSON items(`{var:NAME}` 展开后 JSON.decode)**或** `script` 动态产 | (无 / query) | `.items(...)` |
 | `action.script` | 跑脚本(stdin / env / arg) | arg | `.terminal` |
 | `action.openurl` | `NSWorkspace.open(url)` | arg(URL) | `.terminal` |
 | `action.copytoclipboard` | pasteboard 写入 | arg | `.terminal` |
@@ -191,8 +206,8 @@ scriptfilter item 输出可携带:
 - **错误对外形态:** 现 `AlfredRunnerError` 在 UI 层映射。新模型应该带"哪个节点 throw 的"信息,便于诊断 banner 显示"在 action.script 这步失败"。
 - **utility 节点 MVP:** Safari Control 没用 utility,但其他 plugin 常用 `argstartswith` 做 fallback 路由。MVP 是否带?**倾向不带**,先跑 Safari Control 6 个命令再说。
 - **Hotkey 节点扫不扫:** loader 解 `trigger.hotkey` 但 registry 不让它被触发?这样诊断更友好(显示"已识别但未启用")。或者完全 skip。**倾向解析但 skip 入口注册**,在 `PluginLoadFailure` 邻位加 `.unsupportedNode(type)`。
-- **listfilter 的动态 script 模式:** 部分 listfilter 用 `script` 字段动态生成 fields(`swp` 拿 Safari profile 名就是这种)。MVP 是否覆盖?**倾向覆盖** —— 否则 `swp` 直接废,意义打折。
 - **入口节点不从 keyword 触发的情况:** 比如 file action / hotkey 入口。MVP 不支持(§8 已声明),但 loader 是否 silently skip 还是产 diagnostic?**倾向产 diagnostic**,跟现有 keyword 冲突 banner 同语言。
+- **AppleEvent → Alfred 失败的可观测性:** plugin 跑 `osascript -e 'tell application id "com.runningwithcrayons.Alfred" ...'` 时 osascript 会因为找不到 Alfred 而退出非零。是否在 stderr 模式匹配里加一条通用提示("此功能依赖 Alfred,本容器不支持")?这**不**违反零适配 —— 它是一条对 Alfred 通用 idiom 的反应,不针对任何 plugin。**倾向加**,跟现有 TCC 提示同位置。
 
 ---
 
@@ -208,7 +223,8 @@ scriptfilter item 输出可携带:
 
 - ❌ utility 节点的完整集合(只在 MVP 跑通后按需补)
 - ❌ Workflow 互相调用(一个 workflow 的 action 触发另一 workflow 的入口)
-- ❌ `action.runscript` 独立 runtime 模式(plugin 可以指定 PHP / Python 路径,但 MVP 复用现有 ScriptInvocation 的语言 dispatch 即够)
+- ❌ `action.runscript` 独立 runtime 模式(plugin 可指定 PHP / Python 路径,但 MVP 复用现有 ScriptInvocation 的语言 dispatch 即够)
+- ❌ **`⌥↩ Edit` 类 "回填搜索框" 语义** —— plugin 通过 `tell application id "com.runningwithcrayons.Alfred" to search …` AppleEvent 实现,本质依赖 Alfred 私有能力(已在 alfred-plugin-support.md §6 声明 "Alfred 私有 API ❌")。维持零 plugin 适配代码原则 → 不做定向转译。具体后果:Safari Control 的 `swt ⌥↩ Edit tab URL` / `shi ⌥↩ Edit URL` 在我们这里只会显示运行时错误。
 
 ---
 
