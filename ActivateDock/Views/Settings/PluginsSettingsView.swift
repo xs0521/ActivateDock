@@ -98,16 +98,14 @@ final class PluginsSettingsView: NSView, NSTextFieldDelegate {
 
         let title = NSTextField(labelWithString: group.name)
         title.font = .boldSystemFont(ofSize: 13)
-        let kw = NSTextField(labelWithString: "keyword: " + group.keywords.joined(separator: ", "))
-        kw.font = .systemFont(ofSize: 11)
-        kw.textColor = .secondaryLabelColor
         header.addArrangedSubview(title)
-        header.addArrangedSubview(kw)
 
         let body = NSStackView()
         body.orientation = .vertical
         body.alignment = .leading
         body.spacing = 6
+
+        body.addArrangedSubview(makeMutedLabel("keyword: " + group.keywords.joined(separator: ", ")))
 
         if let desc = group.description, !desc.isEmpty {
             body.addArrangedSubview(makeMutedLabel(desc))

@@ -36,8 +36,13 @@ enum SettingsContentBuilder {
 
     private static func buildPluginsPage(pluginsView: PluginsSettingsView) -> NSView {
         let stack = makePageStack()
-        stack.addArrangedSubview(makePluginsHeader())
+        let header = makePluginsHeader()
+        stack.addArrangedSubview(header)
         stack.addArrangedSubview(pluginsView)
+        // Stretch both header and pluginsView to the full content width.
+        // edgeInsets consume 24pt left + 24pt right = 48pt from stack.width.
+        header.widthAnchor.constraint(equalTo: stack.widthAnchor, constant: -48).isActive = true
+        pluginsView.widthAnchor.constraint(equalTo: stack.widthAnchor, constant: -48).isActive = true
         return wrapInScroll(stack)
     }
 
