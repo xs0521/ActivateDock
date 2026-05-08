@@ -25,7 +25,7 @@ final class ActionScriptNode: WorkflowNode {
 
     func execute(input: NodeInput, context: WorkflowContext,
                  completion: @escaping (Result<NodeOutput, WorkflowError>) -> Void) {
-        let body = shellSubstitute(scriptCommand, query: input.arg ?? "")
+        let body = ScriptInvocation.substituteQuery(in: scriptCommand, query: input.arg ?? "")
         let plan: ScriptInvocation.Plan
         do {
             plan = try ScriptInvocation.plan(body: body,
@@ -75,10 +75,5 @@ final class ActionScriptNode: WorkflowNode {
             let e = WorkflowError(kind: .launchFailed(error), nodeUID: uid, nodeType: nodeType)
             DispatchQueue.main.async { completion(.failure(e)) }
         }
-    }
-
-    private func shellSubstitute(_ template: String, query: String) -> String {
-        let quoted = "'" + query.replacingOccurrences(of: "'", with: "'\\''") + "'"
-        return template.replacingOccurrences(of: "{query}", with: quoted)
     }
 }

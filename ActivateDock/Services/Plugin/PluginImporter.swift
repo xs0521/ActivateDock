@@ -49,11 +49,11 @@ enum PluginImporter {
     }
 
     static func install(from source: URL, replaceExisting: Bool) throws -> ImportResult {
-        let staged = try stageSource(source)
+        let staged = try PluginImportStager.stage(source)
         defer { try? FileManager.default.removeItem(at: staged.tempRoot) }
 
-        let pluginRoot = try locatePluginRoot(in: staged.contentRoot)
-        let manifest = try parseManifest(at: pluginRoot)
+        let pluginRoot = try PluginManifestLocator.locateRoot(in: staged.contentRoot)
+        let manifest = try PluginManifestLocator.parseManifest(at: pluginRoot)
 
         let bundleId = manifest.bundleid?
             .trimmingCharacters(in: .whitespacesAndNewlines)
@@ -65,7 +65,7 @@ enum PluginImporter {
         let fm = FileManager.default
         try fm.createDirectory(at: PluginPaths.root, withIntermediateDirectories: true)
 
-        let existing = bundleId.flatMap { findExistingInstall(bundleId: $0) }
+        let existing = bundleId.flatMap { PluginManifestLocator.findExistingInstall(bundleId: $0) }
         let folderName = existing?.lastPathComponent ?? canonicalName
         let target = PluginPaths.root.appendingPathComponent(folderName, isDirectory: true)
 
@@ -92,114 +92,6 @@ enum PluginImporter {
         )
     }
 
-    private struct Staged {
-        let tempRoot: URL
-        let contentRoot: URL
-    }
-
-    private static func stageSource(_ source: URL) throws -> Staged {
-        let fm = FileManager.default
-        var isDir: ObjCBool = false
-        guard fm.fileExists(atPath: source.path, isDirectory: &isDir) else {
-            throw ImportError.unsupportedFile
-        }
-        let temp = fm.temporaryDirectory.appendingPathComponent(
-            "ActivateDock-import-\(UUID().uuidString)",
-            isDirectory: true
-        )
-        try fm.createDirectory(at: temp, withIntermediateDirectories: true)
-
-        if isDir.boolValue {
-            let dest = temp.appendingPathComponent(source.lastPathComponent, isDirectory: true)
-            do {
-                try fm.copyItem(at: source, to: dest)
-            } catch {
-                try? fm.removeItem(at: temp)
-                throw ImportError.copyFailed(detail: (error as NSError).localizedDescription)
-            }
-            return Staged(tempRoot: temp, contentRoot: dest)
-        }
-
-        let ext = source.pathExtension.lowercased()
-        guard ext == "zip" || ext == "alfredworkflow" else {
-            try? fm.removeItem(at: temp)
-            throw ImportError.unsupportedFile
-        }
-        try unzip(source: source, into: temp)
-        return Staged(tempRoot: temp, contentRoot: temp)
-    }
-
-    private static func unzip(source: URL, into directory: URL) throws {
-        let process = Process()
-        process.executableURL = URL(fileURLWithPath: "/usr/bin/unzip")
-        process.arguments = ["-q", source.path, "-d", directory.path]
-        let stderr = Pipe()
-        process.standardError = stderr
-        do {
-            try process.run()
-            process.waitUntilExit()
-        } catch {
-            try? FileManager.default.removeItem(at: directory)
-            throw ImportError.unzipFailed(detail: (error as NSError).localizedDescription)
-        }
-        guard process.terminationStatus == 0 else {
-            let data = stderr.fileHandleForReading.readDataToEndOfFile()
-            let detail = String(data: data, encoding: .utf8)?
-                .trimmingCharacters(in: .whitespacesAndNewlines)
-                .nonEmpty ?? "exit status \(process.terminationStatus)"
-            try? FileManager.default.removeItem(at: directory)
-            throw ImportError.unzipFailed(detail: detail)
-        }
-    }
-
-    private static func locatePluginRoot(in dir: URL) throws -> URL {
-        let fm = FileManager.default
-        if fm.fileExists(atPath: dir.appendingPathComponent("info.plist").path) {
-            return dir
-        }
-        let entries = (try? fm.contentsOfDirectory(
-            at: dir,
-            includingPropertiesForKeys: [.isDirectoryKey],
-            options: [.skipsHiddenFiles]
-        )) ?? []
-        for entry in entries {
-            let isDir = (try? entry.resourceValues(forKeys: [.isDirectoryKey]))?.isDirectory ?? false
-            guard isDir else { continue }
-            if fm.fileExists(atPath: entry.appendingPathComponent("info.plist").path) {
-                return entry
-            }
-        }
-        throw ImportError.missingManifest
-    }
-
-    private static func parseManifest(at dir: URL) throws -> AlfredWorkflowManifest {
-        let plistURL = dir.appendingPathComponent("info.plist")
-        do {
-            let data = try Data(contentsOf: plistURL)
-            return try PropertyListDecoder().decode(AlfredWorkflowManifest.self, from: data)
-        } catch {
-            throw ImportError.manifestDecodeFailed(detail: (error as NSError).localizedDescription)
-        }
-    }
-
-    private static func findExistingInstall(bundleId: String) -> URL? {
-        let fm = FileManager.default
-        guard let entries = try? fm.contentsOfDirectory(
-            at: PluginPaths.root,
-            includingPropertiesForKeys: [.isDirectoryKey],
-            options: [.skipsHiddenFiles]
-        ) else { return nil }
-        for entry in entries {
-            let plistURL = entry.appendingPathComponent("info.plist")
-            guard let data = try? Data(contentsOf: plistURL),
-                  let m = try? PropertyListDecoder().decode(AlfredWorkflowManifest.self, from: data),
-                  m.bundleid == bundleId
-            else { continue }
-            return entry
-        }
-        return nil
-    }
-
     private static func sanitize(_ name: String) -> String {
         let allowed = CharacterSet.alphanumerics
             .union(CharacterSet(charactersIn: "._-"))
@@ -209,8 +101,4 @@ enum PluginImporter {
         let trimmed = String(scalars).trimmingCharacters(in: CharacterSet(charactersIn: "-"))
         return trimmed.isEmpty ? "plugin-\(UUID().uuidString.prefix(8))" : trimmed
     }
-}
-
-private extension String {
-    var nonEmpty: String? { isEmpty ? nil : self }
 }

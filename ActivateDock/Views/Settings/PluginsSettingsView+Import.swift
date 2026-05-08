@@ -47,7 +47,11 @@ extension PluginsSettingsView {
 
         let pick: (NSApplication.ModalResponse) -> Void = { [weak self] response in
             guard response == .OK, let url = panel.url else { return }
-            self?.runImport(source: url, replaceExisting: false)
+            self?.confirmImport(source: url) { confirmed in
+                if confirmed {
+                    self?.runImport(source: url, replaceExisting: false)
+                }
+            }
         }
         if let window {
             panel.beginSheetModal(for: window, completionHandler: pick)
@@ -76,6 +80,27 @@ extension PluginsSettingsView {
             presentError(error.errorDescription ?? error.localizedDescription)
         } catch {
             presentError(error.localizedDescription)
+        }
+    }
+
+    private func confirmImport(source: URL, completion: @escaping (Bool) -> Void) {
+        let alert = NSAlert()
+        alert.messageText = "确认导入插件?"
+        alert.informativeText = """
+        插件可能包含会在搜索或执行动作时运行的脚本。请只导入你信任来源的插件。
+
+        \(source.lastPathComponent)
+        """
+        alert.alertStyle = .warning
+        alert.addButton(withTitle: "导入")
+        alert.addButton(withTitle: "取消")
+        let handler: (NSApplication.ModalResponse) -> Void = { resp in
+            completion(resp == .alertFirstButtonReturn)
+        }
+        if let window {
+            alert.beginSheetModal(for: window, completionHandler: handler)
+        } else {
+            handler(alert.runModal())
         }
     }
 

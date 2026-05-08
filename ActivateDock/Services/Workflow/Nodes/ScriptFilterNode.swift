@@ -45,7 +45,7 @@ final class ScriptFilterNode: CancellableNode {
         lock.unlock()
 
         let query = input.arg ?? ""
-        let body = Self.shellSubstitute(scriptCommand, query: query)
+        let body = ScriptInvocation.substituteQuery(in: scriptCommand, query: query)
 
         let plan: ScriptInvocation.Plan
         do {
@@ -156,10 +156,5 @@ final class ScriptFilterNode: CancellableNode {
         inflightProcess?.terminate()
         inflightProcess = nil
         lock.unlock()
-    }
-
-    private static func shellSubstitute(_ template: String, query: String) -> String {
-        let quoted = "'" + query.replacingOccurrences(of: "'", with: "'\\''") + "'"
-        return template.replacingOccurrences(of: "{query}", with: quoted)
     }
 }

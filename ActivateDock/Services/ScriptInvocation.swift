@@ -64,6 +64,11 @@ enum ScriptInvocation {
         return Plan(executable: exec, arguments: args, cleanupURL: scriptURL)
     }
 
+    static func substituteQuery(in template: String, query: String) -> String {
+        let quoted = "'" + query.replacingOccurrences(of: "'", with: "'\\''") + "'"
+        return template.replacingOccurrences(of: "{query}", with: quoted)
+    }
+
     private static func writeTempScript(body: String, hint: String) throws -> URL {
         let safeHint = hint
             .replacingOccurrences(of: "/", with: "_")
