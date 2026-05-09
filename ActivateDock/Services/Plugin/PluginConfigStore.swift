@@ -21,7 +21,9 @@ final class PluginConfigStore {
     static let shared = PluginConfigStore()
 
     private let defaultsKey = "PluginConfigOverrides"
+    private let keywordOwnerDefaultsKey = "PluginKeywordOwnerOverrides"
     private var nonSecretOverrides: [String: [String: String]] = [:]
+    private var keywordOwnerOverrides: [String: String] = [:]
 
     private init() {
         load()
@@ -67,6 +69,15 @@ final class PluginConfigStore {
         return merged
     }
 
+    func preferredKeywordOwner(for keyword: String) -> String? {
+        keywordOwnerOverrides[keyword.lowercased()]
+    }
+
+    func setPreferredKeywordOwner(_ bundleId: String, for keyword: String) {
+        keywordOwnerOverrides[keyword.lowercased()] = bundleId
+        saveKeywordOwners()
+    }
+
     private func keychainAccount(bundleId: String, varKey: String) -> String {
         "\(bundleId)::\(varKey)"
     }
@@ -75,13 +86,29 @@ final class PluginConfigStore {
         guard let data = UserDefaults.standard.data(forKey: defaultsKey),
               let decoded = try? JSONDecoder().decode([String: [String: String]].self, from: data) else {
             nonSecretOverrides = [:]
+            loadKeywordOwners()
             return
         }
         nonSecretOverrides = decoded
+        loadKeywordOwners()
     }
 
     private func save() {
         guard let data = try? JSONEncoder().encode(nonSecretOverrides) else { return }
         UserDefaults.standard.set(data, forKey: defaultsKey)
+    }
+
+    private func loadKeywordOwners() {
+        guard let data = UserDefaults.standard.data(forKey: keywordOwnerDefaultsKey),
+              let decoded = try? JSONDecoder().decode([String: String].self, from: data) else {
+            keywordOwnerOverrides = [:]
+            return
+        }
+        keywordOwnerOverrides = decoded
+    }
+
+    private func saveKeywordOwners() {
+        guard let data = try? JSONEncoder().encode(keywordOwnerOverrides) else { return }
+        UserDefaults.standard.set(data, forKey: keywordOwnerDefaultsKey)
     }
 }

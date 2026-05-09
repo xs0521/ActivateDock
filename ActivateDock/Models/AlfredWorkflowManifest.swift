@@ -65,6 +65,7 @@ struct WorkflowObjectConfig: Decodable {
     let script: String?
     let scriptargtype: Int?
     let title: String?
+    let subtext: String?
     let runningsubtext: String?
     // Alfred's "script language" picker — bash / zsh / php / ruby /
     // python / osascript(AS) / osascript(JS) / etc. The integer is
@@ -76,6 +77,9 @@ struct WorkflowObjectConfig: Decodable {
     let url: String?
     // action.copytoclipboard
     let text: String?
+    // utility.argument
+    let argument: String?
+    let passthroughargument: Bool?
     // input.listfilter: Alfred stores items as a JSON-encoded string, not a
     // native plist array. Expand {var:NAME} in this string, then JSON-decode.
     let items: String?
@@ -97,6 +101,7 @@ extension WorkflowObject {
     static let actionScriptType    = "alfred.workflow.action.script"
     static let actionOpenURLType   = "alfred.workflow.action.openurl"
     static let actionCopyType      = "alfred.workflow.action.copytoclipboard"
+    static let utilityArgumentType = "alfred.workflow.utility.argument"
     static let utilityJunctionType = "alfred.workflow.utility.junction"
     var isScriptFilter:    Bool { type == Self.scriptFilterType }
     var isKeywordInput:    Bool { type == Self.keywordInputType }

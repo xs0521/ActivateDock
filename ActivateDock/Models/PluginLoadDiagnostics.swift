@@ -38,6 +38,12 @@ extension PluginLoadFailure.Reason {
 
 struct PluginKeywordConflict {
     let keyword: String
-    let keptBundleId: String
-    let droppedBundleIds: [String]
+    let selectedBundleId: String
+    let candidateBundleIds: [String]
+
+    var keptBundleId: String { selectedBundleId }
+
+    var droppedBundleIds: [String] {
+        candidateBundleIds.filter { $0 != selectedBundleId }
+    }
 }

@@ -29,26 +29,32 @@ final class WorkflowRegistry {
         let result = AlfredWorkflowLoader.loadAll(at: PluginPaths.root)
         loadFailures = result.failures
 
-        var index: [String: IndexEntry] = [:]
-        var droppedByKeyword: [String: [String]] = [:]
+        var candidates: [String: [IndexEntry]] = [:]
         for graph in result.graphs {
             for ep in graph.entrypoints {
                 let key = ep.keyword.lowercased()
-                if index[key] != nil {
-                    NSLog("[WorkflowRegistry] duplicate keyword \"\(key)\" — keeping first, dropping \(graph.bundleId)")
-                    droppedByKeyword[key, default: []].append(graph.bundleId)
-                    continue
-                }
-                index[key] = (graph, ep)
+                candidates[key, default: []].append((graph, ep))
             }
         }
 
-        keywordConflicts = droppedByKeyword.compactMap { kw, dropped in
-            guard let (keptGraph, _) = index[kw] else { return nil }
-            return PluginKeywordConflict(keyword: kw,
-                                         keptBundleId: keptGraph.bundleId,
-                                         droppedBundleIds: dropped)
-        }.sorted { $0.keyword < $1.keyword }
+        var index: [String: IndexEntry] = [:]
+        var conflicts: [PluginKeywordConflict] = []
+        for (keyword, entries) in candidates {
+            let preferred = PluginConfigStore.shared.preferredKeywordOwner(for: keyword)
+            let selected = entries.first { $0.graph.bundleId == preferred } ?? entries[0]
+            index[keyword] = selected
+
+            guard entries.count > 1 else { continue }
+            let ids = entries.map { $0.graph.bundleId }
+            conflicts.append(PluginKeywordConflict(
+                keyword: keyword,
+                selectedBundleId: selected.graph.bundleId,
+                candidateBundleIds: ids
+            ))
+            let ignored = ids.filter { $0 != selected.graph.bundleId }
+            NSLog("[WorkflowRegistry] duplicate keyword \"\(keyword)\" — keeping \(selected.graph.bundleId), dropping \(ignored)")
+        }
+        keywordConflicts = conflicts.sorted { $0.keyword < $1.keyword }
 
         var bundles: [String: WorkflowGraph] = [:]
         var secrets: [String: Set<String>] = [:]
@@ -74,6 +80,10 @@ final class WorkflowRegistry {
     }
 
     func match(input: String) -> (graph: WorkflowGraph, entrypoint: WorkflowGraph.Entrypoint, query: String)? {
+        let exact = input.trimmingCharacters(in: .whitespacesAndNewlines).lowercased()
+        if let entry = byKeyword[exact] {
+            return (entry.graph, entry.entrypoint, "")
+        }
         guard let space = input.firstIndex(of: " ") else { return nil }
         let keyword = input[..<space].lowercased()
         guard let entry = byKeyword[String(keyword)] else { return nil }

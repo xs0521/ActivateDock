@@ -35,10 +35,7 @@ extension PluginsSettingsView {
             ))
         }
         for conflict in conflicts {
-            stack.addArrangedSubview(makeDiagnosticRow(
-                primary: "keyword \"\(conflict.keyword)\"",
-                secondary: conflictDetail(conflict)
-            ))
+            stack.addArrangedSubview(makeConflictRow(conflict))
         }
         return stack
     }
@@ -76,5 +73,37 @@ extension PluginsSettingsView {
         row.alignment = .firstBaseline
         row.spacing = 8
         return row
+    }
+
+    private func makeConflictRow(_ conflict: PluginKeywordConflict) -> NSView {
+        let label = NSTextField(labelWithString: "keyword \"\(conflict.keyword)\"")
+        label.font = .systemFont(ofSize: 11, weight: .medium)
+        label.textColor = .labelColor
+
+        let popup = NSPopUpButton()
+        popup.controlSize = .small
+        popup.font = .systemFont(ofSize: 11)
+        popup.addItems(withTitles: conflict.candidateBundleIds)
+        popup.selectItem(withTitle: conflict.selectedBundleId)
+        popup.identifier = NSUserInterfaceItemIdentifier(conflict.keyword)
+        popup.target = self
+        popup.action = #selector(handleKeywordConflictChoice(_:))
+
+        let suffix = NSTextField(labelWithString: "handles this keyword")
+        suffix.font = .systemFont(ofSize: 11)
+        suffix.textColor = .secondaryLabelColor
+
+        let row = NSStackView(views: [label, popup, suffix])
+        row.orientation = .horizontal
+        row.alignment = .firstBaseline
+        row.spacing = 8
+        return row
+    }
+
+    @objc private func handleKeywordConflictChoice(_ sender: NSPopUpButton) {
+        guard let keyword = sender.identifier?.rawValue,
+              let bundleId = sender.selectedItem?.title else { return }
+        PluginConfigStore.shared.setPreferredKeywordOwner(bundleId, for: keyword)
+        WorkflowRegistry.shared.reload()
     }
 }

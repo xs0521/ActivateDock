@@ -36,11 +36,18 @@ extension AlfredWorkflowLoader {
             return ActionOpenURLNode(uid: uid, urlTemplate: obj.config?.url ?? "")
         case WorkflowObject.actionCopyType:
             return ActionCopyToClipboardNode(uid: uid, textTemplate: obj.config?.text ?? "")
+        case WorkflowObject.utilityArgumentType:
+            return UtilityArgumentNode(uid: uid,
+                                       argumentTemplate: obj.config?.argument ?? "",
+                                       passthrough: obj.config?.passthroughargument ?? false)
         case WorkflowObject.keywordInputType:
             let title = obj.config?.title?.trimmingCharacters(in: .whitespacesAndNewlines)
+                ?? obj.config?.text?.trimmingCharacters(in: .whitespacesAndNewlines)
+            let subtitle = obj.config?.subtext?.trimmingCharacters(in: .whitespacesAndNewlines)
+                ?? obj.config?.runningsubtext
             return KeywordInputNode(uid: uid,
                                     title: (title?.isEmpty ?? true) ? name : title!,
-                                    subtitle: obj.config?.runningsubtext)
+                                    subtitle: subtitle)
         case WorkflowObject.listFilterInputType:
             // Dynamic mode: has a script → behave exactly like scriptfilter
             if let raw = obj.config?.script?.trimmingCharacters(in: .whitespacesAndNewlines),

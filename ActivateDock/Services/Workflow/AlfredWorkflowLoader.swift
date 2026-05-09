@@ -96,9 +96,13 @@ enum AlfredWorkflowLoader {
                 }
                 continue
             }
-            let keyword = expand(rawKeyword, with: effectiveVars).trimmingCharacters(in: .whitespaces)
-            guard !keyword.isEmpty else { continue }
-            entrypoints.append(WorkflowGraph.Entrypoint(keyword: keyword, nodeUID: node.uid))
+            let expanded = expand(rawKeyword, with: effectiveVars)
+            let keywords = expanded.split(separator: "||").map {
+                String($0).trimmingCharacters(in: .whitespaces)
+            }.filter { !$0.isEmpty }
+            for keyword in keywords {
+                entrypoints.append(WorkflowGraph.Entrypoint(keyword: keyword, nodeUID: node.uid))
+            }
         }
 
         guard !entrypoints.isEmpty else { return result }

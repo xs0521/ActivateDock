@@ -20,7 +20,8 @@ final class ActionOpenURLNode: WorkflowNode {
 
     func execute(input: NodeInput, context: WorkflowContext,
                  completion: @escaping (Result<NodeOutput, WorkflowError>) -> Void) {
-        let resolved = urlTemplate.replacingOccurrences(of: "{query}", with: input.arg ?? "")
+        let template = urlTemplate.isEmpty ? (input.arg ?? "") : urlTemplate
+        let resolved = template.replacingOccurrences(of: "{query}", with: input.arg ?? "")
         DispatchQueue.main.async {
             if let url = URL(string: resolved) { NSWorkspace.shared.open(url) }
             completion(.success(.terminal))
