@@ -37,7 +37,7 @@ enum InstalledAppsCatalog {
         guard let entries = try? FileManager.default.contentsOfDirectory(
             at: url,
             includingPropertiesForKeys: [.isDirectoryKey],
-            options: [.skipsHiddenFiles]
+            options: []
         ) else { return [] }
 
         var apps: [InstalledApp] = []
@@ -52,7 +52,9 @@ enum InstalledAppsCatalog {
                     lowercaseName: name.lowercased(),
                     icon: icon
                 ))
-            } else if let isDir = (try? entry.resourceValues(forKeys: [.isDirectoryKey]))?.isDirectory, isDir {
+            } else if let values = try? entry.resourceValues(forKeys: [.isDirectoryKey, .isHiddenKey]),
+                      values.isDirectory == true,
+                      values.isHidden != true {
                 apps.append(contentsOf: scan(path: entry.path, depth: depth + 1, maxDepth: maxDepth))
             }
         }
