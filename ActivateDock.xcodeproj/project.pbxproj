@@ -6,6 +6,10 @@
 	objectVersion = 77;
 	objects = {
 
+/* Begin PBXBuildFile section */
+		D4429A102FC0000100000001 /* OpenMultitouchSupport in Frameworks */ = {isa = PBXBuildFile; productRef = D4429A122FC0000100000001 /* OpenMultitouchSupport */; };
+/* End PBXBuildFile section */
+
 /* Begin PBXFileReference section */
 		B11A5A9F2FA98AC100B7E973 /* ActivateDock.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = ActivateDock.app; sourceTree = BUILT_PRODUCTS_DIR; };
 /* End PBXFileReference section */
@@ -23,6 +27,7 @@
 			isa = PBXFrameworksBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
+				D4429A102FC0000100000001 /* OpenMultitouchSupport in Frameworks */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -65,6 +70,7 @@
 			);
 			name = ActivateDock;
 			packageProductDependencies = (
+				D4429A122FC0000100000001 /* OpenMultitouchSupport */,
 			);
 			productName = ActivateDock;
 			productReference = B11A5A9F2FA98AC100B7E973 /* ActivateDock.app */;
@@ -94,6 +100,9 @@
 			);
 			mainGroup = B11A5A962FA98AC100B7E973;
 			minimizedProjectReferenceProxies = 1;
+			packageReferences = (
+				D4429A112FC0000100000001 /* XCRemoteSwiftPackageReference "OpenMultitouchSupport" */,
+			);
 			preferredProjectObjectVersion = 77;
 			productRefGroup = B11A5AA02FA98AC100B7E973 /* Products */;
 			projectDirPath = "";
@@ -123,6 +132,25 @@
 			runOnlyForDeploymentPostprocessing = 0;
 		};
 /* End PBXSourcesBuildPhase section */
+
+/* Begin XCRemoteSwiftPackageReference section */
+		D4429A112FC0000100000001 /* XCRemoteSwiftPackageReference "OpenMultitouchSupport" */ = {
+			isa = XCRemoteSwiftPackageReference;
+			repositoryURL = "https://github.com/Kyome22/OpenMultitouchSupport";
+			requirement = {
+				kind = upToNextMajorVersion;
+				minimumVersion = 4.0.0;
+			};
+		};
+/* End XCRemoteSwiftPackageReference section */
+
+/* Begin XCSwiftPackageProductDependency section */
+		D4429A122FC0000100000001 /* OpenMultitouchSupport */ = {
+			isa = XCSwiftPackageProductDependency;
+			package = D4429A112FC0000100000001 /* XCRemoteSwiftPackageReference "OpenMultitouchSupport" */;
+			productName = OpenMultitouchSupport;
+		};
+/* End XCSwiftPackageProductDependency section */
 
 /* Begin XCBuildConfiguration section */
 		B11A5AAB2FA98AC200B7E973 /* Debug */ = {

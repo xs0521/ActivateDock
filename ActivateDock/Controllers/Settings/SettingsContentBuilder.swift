@@ -8,8 +8,13 @@ import Cocoa
 enum SettingsContentBuilder {
     static func build(recorder: KeyRecorderView,
                       accessibilitySwitch: StateSwitch,
+                      fourFingerSwipeSwitch: StateSwitch,
                       pluginsView: PluginsSettingsView) -> NSView {
-        let general = buildGeneralPage(recorder: recorder, accessibilitySwitch: accessibilitySwitch)
+        let general = buildGeneralPage(
+            recorder: recorder,
+            accessibilitySwitch: accessibilitySwitch,
+            fourFingerSwipeSwitch: fourFingerSwipeSwitch
+        )
         let plugins = buildPluginsPage(pluginsView: pluginsView)
         return SettingsTabContainer(pages: [
             .init(title: "通用", view: general),
@@ -18,12 +23,19 @@ enum SettingsContentBuilder {
     }
 
     private static func buildGeneralPage(recorder: KeyRecorderView,
-                                         accessibilitySwitch: StateSwitch) -> NSView {
+                                         accessibilitySwitch: StateSwitch,
+                                         fourFingerSwipeSwitch: StateSwitch) -> NSView {
         let stack = makePageStack()
         stack.addArrangedSubview(makeSection(
             title: "Activation Shortcut",
             subtitle: "Press a key combination to summon ActivateDock from anywhere.",
             trailing: recorder
+        ))
+        stack.addArrangedSubview(makeDivider())
+        stack.addArrangedSubview(makeSection(
+            title: "Four-finger swipe down",
+            subtitle: "Experimental global trackpad trigger. Uses private MultitouchSupport APIs and requires Sandbox off.",
+            trailing: fourFingerSwipeSwitch
         ))
         stack.addArrangedSubview(makeDivider())
         stack.addArrangedSubview(makeSection(

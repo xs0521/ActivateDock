@@ -11,13 +11,14 @@ final class SettingsWindowController: NSWindowController, NSWindowDelegate {
 
     private let recorder = KeyRecorderView(combo: HotKeyManager.shared.currentCombo)
     private let accessibilitySwitch = StateSwitch()
+    private let fourFingerSwipeSwitch = StateSwitch()
     private let pluginsView = PluginsSettingsView()
     private var accessibilityTimer: Timer?
     private var hasPromptedAccessibility = false
 
     private convenience init() {
         let window = NSWindow(
-            contentRect: NSRect(x: 0, y: 0, width: 480, height: 520),
+            contentRect: NSRect(x: 0, y: 0, width: 480, height: 560),
             styleMask: [.titled, .closable],
             backing: .buffered,
             defer: false
@@ -30,6 +31,7 @@ final class SettingsWindowController: NSWindowController, NSWindowDelegate {
         window.contentView = SettingsContentBuilder.build(
             recorder: recorder,
             accessibilitySwitch: accessibilitySwitch,
+            fourFingerSwipeSwitch: fourFingerSwipeSwitch,
             pluginsView: pluginsView
         )
         wireActions()
@@ -39,6 +41,7 @@ final class SettingsWindowController: NSWindowController, NSWindowDelegate {
         recorder.combo = HotKeyManager.shared.currentCombo
         pluginsView.rebuild()
         refreshAccessibility()
+        refreshFourFingerSwipe()
         startAccessibilityWatch()
 
         NSApp.activate(ignoringOtherApps: true)
@@ -61,6 +64,9 @@ final class SettingsWindowController: NSWindowController, NSWindowDelegate {
         accessibilitySwitch.onTap = { [weak self] in
             self?.accessibilitySwitchToggled()
         }
+        fourFingerSwipeSwitch.onTap = { [weak self] in
+            self?.fourFingerSwipeSwitchToggled()
+        }
     }
 
     private func accessibilitySwitchToggled() {
@@ -77,6 +83,16 @@ final class SettingsWindowController: NSWindowController, NSWindowDelegate {
         let granted = isAccessibilityTrusted()
         if granted { hasPromptedAccessibility = false }
         accessibilitySwitch.state = granted ? .on : .off
+    }
+
+    private func fourFingerSwipeSwitchToggled() {
+        let enabled = fourFingerSwipeSwitch.state != .on
+        FourFingerSwipeMonitor.shared.setEnabled(enabled)
+        refreshFourFingerSwipe()
+    }
+
+    private func refreshFourFingerSwipe() {
+        fourFingerSwipeSwitch.state = FourFingerSwipePreferences.isEnabled ? .on : .off
     }
 
     private func startAccessibilityWatch() {

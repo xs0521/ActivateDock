@@ -27,6 +27,10 @@ class AppDelegate: NSObject, NSApplicationDelegate {
             self?.toggleLauncher()
         }
         HotKeyManager.shared.register()
+        FourFingerSwipeMonitor.shared.onSwipeDown = { [weak self] in
+            self?.showLauncher()
+        }
+        FourFingerSwipeMonitor.shared.startIfEnabled()
 
         let controller = StatusItemController()
         controller.onSettings = { SettingsWindowController.shared.showAndActivate() }
@@ -46,6 +50,7 @@ class AppDelegate: NSObject, NSApplicationDelegate {
 
     func applicationWillTerminate(_ aNotification: Notification) {
         HotKeyManager.shared.unregister()
+        FourFingerSwipeMonitor.shared.stop()
         pluginWatcher?.stop()
     }
 
