@@ -4,7 +4,7 @@
 //
 //  Decides whether a plugin manifest variable is "sensitive"
 //  (credential-bearing), so PluginConfigStore can route the value to
-//  Keychain and the Settings UI can render it as a secure field.
+//  local encrypted storage and the Settings UI can render it as a secure field.
 //
 //  Two signals, in priority order:
 //    1. Explicit declaration — the manifest's optional

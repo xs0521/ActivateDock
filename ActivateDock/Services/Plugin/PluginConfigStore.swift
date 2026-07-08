@@ -10,9 +10,8 @@
 //
 //  Storage is split by sensitivity:
 //    - Non-secret values: UserDefaults JSON `[bundleId: [varKey: value]]`.
-//    - Secret values (declared in manifest's `secretvariables` or
-//      matched by PluginVariableSensitivity heuristic): Keychain
-//      Services, account = "<bundleId>::<varKey>".
+//    - Secret values: locally encrypted UserDefaults values, account =
+//      "<bundleId>::<varKey>". This avoids Keychain permission prompts.
 //
 
 import Foundation
@@ -31,18 +30,18 @@ final class PluginConfigStore {
 
     func override(for bundleId: String, varKey: String) -> String? {
         if PluginVariableSensitivity.isSecret(bundleId: bundleId, varKey: varKey) {
-            return Keychain.read(account: keychainAccount(bundleId: bundleId, varKey: varKey))
+            return PluginSecretStore.read(account: secretAccount(bundleId: bundleId, varKey: varKey))
         }
         return nonSecretOverrides[bundleId]?[varKey]
     }
 
     func setOverride(_ value: String, for bundleId: String, varKey: String) {
         if PluginVariableSensitivity.isSecret(bundleId: bundleId, varKey: varKey) {
-            let account = keychainAccount(bundleId: bundleId, varKey: varKey)
+            let account = secretAccount(bundleId: bundleId, varKey: varKey)
             if value.isEmpty {
-                Keychain.delete(account: account)
+                PluginSecretStore.delete(account: account)
             } else {
-                Keychain.write(value, account: account)
+                PluginSecretStore.write(value, account: account)
             }
             return
         }
@@ -78,7 +77,7 @@ final class PluginConfigStore {
         saveKeywordOwners()
     }
 
-    private func keychainAccount(bundleId: String, varKey: String) -> String {
+    private func secretAccount(bundleId: String, varKey: String) -> String {
         "\(bundleId)::\(varKey)"
     }
 
