@@ -35,6 +35,25 @@ done
 readonly APP_BUILT="$BUILD_DIR/Build/Products/$CONFIG/$SCHEME.app"
 readonly APP_DIST="$DIST_DIR/$SCHEME.app"
 
+stop_running_app() {
+    if ! pgrep -x "$SCHEME" >/dev/null; then
+        return
+    fi
+
+    echo "[stop] $SCHEME"
+    killall "$SCHEME" 2>/dev/null || true
+
+    for _ in {1..20}; do
+        if ! pgrep -x "$SCHEME" >/dev/null; then
+            return
+        fi
+        sleep 0.2
+    done
+
+    echo "[stop] forcing $SCHEME"
+    killall -9 "$SCHEME" 2>/dev/null || true
+}
+
 echo "[build] $SCHEME ($CONFIG)"
 mkdir -p "$DIST_DIR"
 
@@ -70,6 +89,7 @@ echo "[zip] $DIST_DIR/$ZIP_NAME"
     /usr/bin/ditto -c -k --keepParent "$SCHEME.app" "$ZIP_NAME")
 
 if [[ "$INSTALL" == "1" ]]; then
+    stop_running_app
     echo "[install] /Applications/$SCHEME.app"
     rm -rf "/Applications/$SCHEME.app"
     cp -R "$APP_DIST" "/Applications/$SCHEME.app"
