@@ -17,6 +17,9 @@
 "settings.language.english" = "English";
 "settings.language.chinese" = "中文";
 
+"settings.section.version.title" = "Version";
+"settings.section.version.subtitle" = "Current installed version.";
+
 "settings.plugins.header.title" = "Plugins";
 "settings.plugins.header.subtitle" = "Override variables declared by each installed plugin's info.plist. Values are stored locally and merged on top of the manifest's defaults at run time.";
 

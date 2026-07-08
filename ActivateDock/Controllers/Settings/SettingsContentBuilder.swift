@@ -52,6 +52,12 @@ enum SettingsContentBuilder {
             subtitle: L("settings.section.language.subtitle"),
             trailing: languageControl
         ))
+        stack.addArrangedSubview(makeDivider())
+        stack.addArrangedSubview(makeSection(
+            title: L("settings.section.version.title"),
+            subtitle: L("settings.section.version.subtitle"),
+            trailing: makeValueLabel(appVersionText())
+        ))
         return wrapInScroll(stack)
     }
 
@@ -147,6 +153,17 @@ enum SettingsContentBuilder {
         label.textColor = .secondaryLabelColor
         label.preferredMaxLayoutWidth = 360
         return label
+    }
+
+    private static func makeValueLabel(_ text: String) -> NSTextField {
+        let label = NSTextField(labelWithString: text)
+        label.font = .systemFont(ofSize: 13, weight: .medium)
+        label.textColor = .secondaryLabelColor
+        return label
+    }
+
+    private static func appVersionText() -> String {
+        Bundle.main.object(forInfoDictionaryKey: "CFBundleShortVersionString") as? String ?? "1.0.0"
     }
 
     private static func makePluginsHeader() -> NSView {

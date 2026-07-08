@@ -17,6 +17,9 @@
 "settings.language.english" = "English";
 "settings.language.chinese" = "中文";
 
+"settings.section.version.title" = "版本";
+"settings.section.version.subtitle" = "当前安装版本。";
+
 "settings.plugins.header.title" = "插件";
 "settings.plugins.header.subtitle" = "覆盖每个已安装插件 info.plist 中声明的变量。值保存在本地,运行时在清单默认值之上合并。";
 
