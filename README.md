@@ -27,24 +27,12 @@ All README image assets live in [`img/`](img/).
 
 ## Install
 
-Build and install the app into `/Applications`:
-
-```bash
-./build.sh --install
-```
-
-The script builds the Release app, writes a distributable copy into `dist/`, zips it, stops a running `ActivateDock` process if needed, and replaces `/Applications/ActivateDock.app`.
+Download the latest `ActivateDock-*.zip` package from [Releases](https://github.com/xs0521/ActivateDock/releases), unzip it, then drag `ActivateDock.app` into `/Applications`.
 
 Before opening the installed app, remove macOS's quarantine attribute:
 
 ```bash
 sudo xattr -r -d com.apple.quarantine /Applications/ActivateDock.app
-```
-
-For local development without installing:
-
-```bash
-./run.sh
 ```
 
 ## Usage
