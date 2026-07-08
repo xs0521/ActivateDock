@@ -16,16 +16,27 @@ struct FourFingerSwipeDetector {
     private var startTime: TimeInterval = 0
     private var lastTriggerTime: TimeInterval = 0
 
-    private let requiredTouches = 4
-    private let maxGestureDuration: TimeInterval = 0.85
-    private let cooldown: TimeInterval = 0.9
-    private let minVerticalTravel: Float = 0.16
-    private let maxHorizontalDrift: Float = 0.14
+    private let minTouches = 4
+    private let maxTouches = 5
+    private let minTrackingTouches = 3
+    private let maxGestureDuration: TimeInterval = 1.15
+    private let cooldown: TimeInterval = 0.55
+    private let minVerticalTravel: Float = 0.10
+    private let maxHorizontalDrift: Float = 0.22
 
     mutating func consume(_ touches: [OMSTouchData]) -> Bool {
         let now = ProcessInfo.processInfo.systemUptime
         let active = touches.filter(Self.isActive)
-        guard active.count == requiredTouches else {
+        guard active.count >= minTouches else {
+            if startPoint != nil,
+               active.count >= minTrackingTouches,
+               now - startTime <= maxGestureDuration {
+                return false
+            }
+            reset()
+            return false
+        }
+        guard active.count <= maxTouches else {
             reset()
             return false
         }
@@ -71,9 +82,9 @@ struct FourFingerSwipeDetector {
 
     private static func isActive(_ touch: OMSTouchData) -> Bool {
         switch touch.state {
-        case .starting, .making, .touching:
+        case .starting, .making, .touching, .breaking:
             return true
-        case .notTouching, .hovering, .breaking, .lingering, .leaving:
+        case .notTouching, .hovering, .lingering, .leaving:
             return false
         }
     }
