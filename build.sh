@@ -63,17 +63,32 @@ stop_running_app() {
     killall -9 "$SCHEME" 2>/dev/null || true
 }
 
+run_xcodebuild() {
+    if [[ "${#XCODEBUILD_OVERRIDES[@]}" -gt 0 ]]; then
+        xcodebuild \
+            -project "$PROJECT" \
+            -scheme "$SCHEME" \
+            -configuration "$CONFIG" \
+            -derivedDataPath "$BUILD_DIR" \
+            -destination 'platform=macOS' \
+            build \
+            "${XCODEBUILD_OVERRIDES[@]}"
+        return
+    fi
+
+    xcodebuild \
+        -project "$PROJECT" \
+        -scheme "$SCHEME" \
+        -configuration "$CONFIG" \
+        -derivedDataPath "$BUILD_DIR" \
+        -destination 'platform=macOS' \
+        build
+}
+
 echo "[build] $SCHEME ($CONFIG)"
 mkdir -p "$DIST_DIR"
 
-if ! xcodebuild \
-    -project "$PROJECT" \
-    -scheme "$SCHEME" \
-    -configuration "$CONFIG" \
-    -derivedDataPath "$BUILD_DIR" \
-    -destination 'platform=macOS' \
-    build \
-    "${XCODEBUILD_OVERRIDES[@]}" > "$LOG" 2>&1; then
+if ! run_xcodebuild > "$LOG" 2>&1; then
     echo "[build] FAILED. Tail of $LOG:"
     tail -40 "$LOG"
     exit 1
