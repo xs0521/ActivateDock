@@ -1,19 +1,19 @@
 # ActivateDock
 
-ActivateDock is a macOS launcher for quickly switching running apps, opening installed apps, searching the web, and running Alfred-style workflows from one floating panel.
+ActivateDock is a macOS launcher for switching apps, opening installed apps, searching the web, opening System Settings, and running Alfred plugins from one floating panel.
 
 ![ActivateDock launcher](img/Xnip2026-07-08_13-44-07.webp)
 
 ## Features
 
-- Global activation shortcut.
-- Experimental four-finger swipe down trigger.
-- Running app groups with memory badges.
+- Open ActivateDock from anywhere with a global shortcut.
+- Optionally open ActivateDock with a four-finger swipe down gesture.
+- Switch between running apps and reopen minimized windows.
 - Search installed apps, including system apps such as Safari.
-- Built-in web search commands: `google`, `baidu`, and `bing`.
-- System Settings quick commands, such as `about`, `battery`, `bluetooth`, `privacy`, `storage`, and `software update`.
-- Alfred-style workflow import and execution for Script Filter / keyword-driven workflows.
-- Plugin settings UI for workflow variables, keyword conflicts, and load diagnostics.
+- Search the web with `google`, `baidu`, and `bing`.
+- Open System Settings panes by typing names such as `battery`, `bluetooth`, `privacy`, `storage`, or `software update`.
+- Import Alfred plugins and use their keywords from ActivateDock.
+- Configure plugin variables and keyword conflicts in Settings.
 
 ## Screenshots
 
@@ -23,13 +23,13 @@ ActivateDock is a macOS launcher for quickly switching running apps, opening ins
 | Settings general page | Settings plugins page |
 | ![Settings general page](img/Xnip2026-07-08_14-02-45.png) | ![Settings plugins page](img/Xnip2026-07-08_14-02-54.png) |
 
-All README image assets live in [`img/`](img/).
-
 ## Install
 
-Download the latest `ActivateDock-*.zip` package from [Releases](https://github.com/xs0521/ActivateDock/releases), unzip it, then drag `ActivateDock.app` into `/Applications`.
+1. Download the latest `ActivateDock-*.zip` package from [Releases](https://github.com/xs0521/ActivateDock/releases).
+2. Unzip it.
+3. Drag `ActivateDock.app` into `/Applications`.
 
-Before opening the installed app, remove macOS's quarantine attribute:
+Before opening ActivateDock for the first time, run:
 
 ```bash
 sudo xattr -r -d com.apple.quarantine /Applications/ActivateDock.app
@@ -37,7 +37,7 @@ sudo xattr -r -d com.apple.quarantine /Applications/ActivateDock.app
 
 ## Usage
 
-Open ActivateDock with the configured shortcut or the optional four-finger swipe down gesture. Type to search apps, commands, web shortcuts, or imported workflow keywords.
+Open ActivateDock with your shortcut or the optional four-finger swipe gesture. Type an app name, command, web search, System Settings name, or Alfred plugin keyword.
 
 Examples:
 
@@ -55,43 +55,15 @@ Press Enter to open the selected result. Use arrow keys to move through results.
 Open settings from the menu bar item.
 
 - Activation Shortcut: change the global hotkey.
-- Accessibility Permission: lets ActivateDock restore minimized windows when switching apps.
-- Four-finger swipe down: experimental global trackpad trigger powered by `OpenMultitouchSupport`.
-- Plugins: import Alfred-style workflows, edit variables, and resolve keyword conflicts.
+- Accessibility Permission: restore minimized windows when switching apps.
+- Four-finger swipe down: turn the optional trackpad gesture on or off.
+- Language: switch between English and Chinese.
+- Plugins: import Alfred plugins, edit variables, and resolve keyword conflicts.
 
-## Plugin Support
+## Alfred Plugins
 
-ActivateDock can import `.alfredworkflow` or `.zip` workflow bundles. Imported workflows are stored locally under:
+ActivateDock supports importing Alfred plugins.
 
-```text
-~/Library/Application Support/ActivateDock/Plugins/
-```
+## Note
 
-The runtime focuses on common Alfred workflow pieces:
-
-- `input.scriptfilter`
-- `input.keyword`
-- `input.listfilter`
-- `action.script`
-- `action.openurl`
-- `action.copytoclipboard`
-- `utility.argument`
-- `utility.junction`
-
-See [`docs/alfred-plugin-support.md`](docs/alfred-plugin-support.md) and [`docs/workflow-graph-runtime.md`](docs/workflow-graph-runtime.md) for implementation notes and current compatibility limits.
-
-## Gesture Caveat
-
-The four-finger swipe trigger is intentionally marked experimental. It uses `OpenMultitouchSupport`, which wraps Apple's private `MultitouchSupport.framework`. This is suitable for direct distribution, not Mac App Store submission. If the gesture conflicts with Mission Control or App Expose, adjust macOS trackpad settings.
-
-## Development
-
-Resolve packages and build with Xcode or the included scripts:
-
-```bash
-xcodebuild -resolvePackageDependencies -project ActivateDock.xcodeproj -scheme ActivateDock
-./build.sh
-./build.sh --install
-```
-
-The app currently targets macOS and has App Sandbox disabled because plugin execution and global multitouch monitoring require capabilities that do not fit the sandboxed Mac App Store model.
+The four-finger swipe gesture is experimental. If it conflicts with macOS gestures, turn it off in Settings.
