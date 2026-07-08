@@ -60,6 +60,12 @@ final class ViewController: NSViewController {
             name: NSApplication.willBecomeActiveNotification,
             object: nil
         )
+        NotificationCenter.default.addObserver(
+            self,
+            selector: #selector(handleLocalizationChange(_:)),
+            name: LocalizationManager.didChangeNotification,
+            object: nil
+        )
         let ws = NSWorkspace.shared.notificationCenter
         ws.addObserver(self, selector: #selector(handleWorkspaceChange(_:)),
                        name: NSWorkspace.didLaunchApplicationNotification, object: nil)
@@ -77,6 +83,11 @@ final class ViewController: NSViewController {
 
     @objc private func handleWorkspaceChange(_ note: Notification) {
         refreshRunningApps()
+    }
+
+    @objc private func handleLocalizationChange(_ note: Notification) {
+        searchField.placeholderString = L("search.placeholder")
+        updateSearchHint(for: searchField.stringValue)
     }
 
     override func viewDidAppear() {
