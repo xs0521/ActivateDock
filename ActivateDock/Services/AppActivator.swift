@@ -10,6 +10,14 @@ enum AppActivator {
     @discardableResult
     static func activate(_ app: NSRunningApplication) -> Bool {
         deminiaturizeWindows(pid: app.processIdentifier)
+        if let bundleURL = app.bundleURL {
+            NSWorkspace.shared.openApplication(
+                at: bundleURL,
+                configuration: NSWorkspace.OpenConfiguration(),
+                completionHandler: nil
+            )
+            return true
+        }
         return app.activate(options: [.activateAllWindows])
     }
 
