@@ -13,6 +13,7 @@ final class SettingsWindowController: NSWindowController, NSWindowDelegate {
     private let accessibilitySwitch = StateSwitch()
     private let fourFingerSwipeSwitch = StateSwitch()
     private let pluginsView = PluginsSettingsView()
+    private let languageControl = NSSegmentedControl()
     private var accessibilityTimer: Timer?
     private var hasPromptedAccessibility = false
 
@@ -23,18 +24,23 @@ final class SettingsWindowController: NSWindowController, NSWindowDelegate {
             backing: .buffered,
             defer: false
         )
-        window.title = "ActivateDock Settings"
         window.isReleasedWhenClosed = false
         window.hidesOnDeactivate = false
         self.init(window: window)
         window.delegate = self
-        window.contentView = SettingsContentBuilder.build(
-            recorder: recorder,
-            accessibilitySwitch: accessibilitySwitch,
-            fourFingerSwipeSwitch: fourFingerSwipeSwitch,
-            pluginsView: pluginsView
-        )
+        configureLanguageControl()
+        rebuildContent()
         wireActions()
+        NotificationCenter.default.addObserver(
+            self,
+            selector: #selector(handleLocalizationChange),
+            name: LocalizationManager.didChangeNotification,
+            object: nil
+        )
+    }
+
+    deinit {
+        NotificationCenter.default.removeObserver(self)
     }
 
     func showAndActivate() {
@@ -67,6 +73,51 @@ final class SettingsWindowController: NSWindowController, NSWindowDelegate {
         fourFingerSwipeSwitch.onTap = { [weak self] in
             self?.fourFingerSwipeSwitchToggled()
         }
+        languageControl.target = self
+        languageControl.action = #selector(handleLanguageChange(_:))
+    }
+
+    private func configureLanguageControl() {
+        let cases = AppLanguage.allCases
+        languageControl.segmentStyle = .texturedRounded
+        languageControl.trackingMode = .selectOne
+        languageControl.segmentCount = cases.count
+        for (i, lang) in cases.enumerated() {
+            languageControl.setLabel(lang.displayName, forSegment: i)
+            languageControl.setWidth(72, forSegment: i)
+        }
+        syncLanguageControl()
+    }
+
+    private func syncLanguageControl() {
+        let current = LocalizationManager.shared.currentLanguage
+        if let idx = AppLanguage.allCases.firstIndex(of: current) {
+            languageControl.selectedSegment = idx
+        }
+    }
+
+    @objc private func handleLanguageChange(_ sender: NSSegmentedControl) {
+        let cases = AppLanguage.allCases
+        let idx = sender.selectedSegment
+        guard cases.indices.contains(idx) else { return }
+        LocalizationManager.shared.setLanguage(cases[idx])
+    }
+
+    @objc private func handleLocalizationChange() {
+        rebuildContent()
+        syncLanguageControl()
+    }
+
+    private func rebuildContent() {
+        window?.title = L("settings.window.title")
+        window?.contentView = SettingsContentBuilder.build(
+            recorder: recorder,
+            accessibilitySwitch: accessibilitySwitch,
+            fourFingerSwipeSwitch: fourFingerSwipeSwitch,
+            languageControl: languageControl,
+            pluginsView: pluginsView
+        )
+        pluginsView.rebuild()
     }
 
     private func accessibilitySwitchToggled() {

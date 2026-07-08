@@ -28,10 +28,10 @@ struct SearchCommand {
     static func hint(for input: String) -> String? {
         guard let spaceIndex = input.firstIndex(of: " ") else { return nil }
         let keyword = input[..<spaceIndex].lowercased()
-        guard let hintText = hintRegistry[String(keyword)] else { return nil }
+        guard hintRegistry.contains(String(keyword)) else { return nil }
         let suffix = input[input.index(after: spaceIndex)...]
         guard suffix.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty else { return nil }
-        return hintText
+        return L("search.hint.web_query")
     }
 
     private static let registry: [String: String] = [
@@ -40,9 +40,5 @@ struct SearchCommand {
         "bing": "https://www.bing.com/search?q={query}"
     ]
 
-    private static let hintRegistry: [String: String] = [
-        "google": "输入你要搜索的内容",
-        "baidu": "输入你要搜索的内容",
-        "bing": "输入你要搜索的内容"
-    ]
+    private static let hintRegistry: Set<String> = ["google", "baidu", "bing"]
 }

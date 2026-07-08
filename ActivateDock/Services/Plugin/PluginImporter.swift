@@ -33,17 +33,17 @@ enum PluginImporter {
         var errorDescription: String? {
             switch self {
             case .unsupportedFile:
-                return "只支持 .alfredworkflow / .zip 文件或一个插件目录。"
+                return L("plugins.error.unsupported_file")
             case .unzipFailed(let detail):
-                return "解压失败:\(detail)"
+                return L("plugins.error.unzip_failed", detail)
             case .missingManifest:
-                return "找不到 info.plist —— 这不像是一个 Alfred 插件。"
+                return L("plugins.error.missing_manifest")
             case .manifestDecodeFailed(let detail):
-                return "info.plist 解析失败:\(detail)"
+                return L("plugins.error.manifest_decode_failed", detail)
             case .alreadyExists(let bundleId, _):
-                return "插件 \(bundleId) 已存在。"
+                return L("plugins.error.already_exists", bundleId)
             case .copyFailed(let detail):
-                return "拷贝失败:\(detail)"
+                return L("plugins.error.copy_failed", detail)
             }
         }
     }

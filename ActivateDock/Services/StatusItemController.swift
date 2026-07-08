@@ -17,8 +17,18 @@ final class StatusItemController {
     init() {
         statusItem = NSStatusBar.system.statusItem(withLength: NSStatusItem.variableLength)
         configureButton()
-        buildMenu()
+        rebuildMenu()
         statusItem.menu = menu
+        NotificationCenter.default.addObserver(
+            self,
+            selector: #selector(handleLocalizationChange),
+            name: LocalizationManager.didChangeNotification,
+            object: nil
+        )
+    }
+
+    deinit {
+        NotificationCenter.default.removeObserver(self)
     }
 
     private func configureButton() {
@@ -29,20 +39,26 @@ final class StatusItemController {
         button.toolTip = "ActivateDock"
     }
 
-    private func buildMenu() {
-        let settingsItem = NSMenuItem(title: "Settings…",
+    @objc private func handleLocalizationChange() {
+        rebuildMenu()
+    }
+
+    private func rebuildMenu() {
+        menu.removeAllItems()
+
+        let settingsItem = NSMenuItem(title: L("menu.settings"),
                                       action: #selector(handleSettings),
                                       keyEquivalent: ",")
         settingsItem.target = self
         menu.addItem(settingsItem)
 
-        let helpItem = NSMenuItem(title: "Help", action: nil, keyEquivalent: "")
+        let helpItem = NSMenuItem(title: L("menu.help"), action: nil, keyEquivalent: "")
         helpItem.submenu = makeHelpSubmenu()
         menu.addItem(helpItem)
 
         menu.addItem(.separator())
 
-        let quitItem = NSMenuItem(title: "Quit",
+        let quitItem = NSMenuItem(title: L("menu.quit"),
                                   action: #selector(handleQuit),
                                   keyEquivalent: "q")
         quitItem.target = self
@@ -52,13 +68,13 @@ final class StatusItemController {
     private func makeHelpSubmenu() -> NSMenu {
         let submenu = NSMenu()
 
-        let reportItem = NSMenuItem(title: "Report Bug",
+        let reportItem = NSMenuItem(title: L("menu.report_bug"),
                                     action: #selector(handleReportBug),
                                     keyEquivalent: "")
         reportItem.target = self
         submenu.addItem(reportItem)
 
-        let updateItem = NSMenuItem(title: "Check for Update…",
+        let updateItem = NSMenuItem(title: L("menu.check_for_update"),
                                     action: #selector(handleCheckForUpdate),
                                     keyEquivalent: "")
         updateItem.target = self

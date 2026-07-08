@@ -1,0 +1,102 @@
+/* Settings window */
+"settings.window.title" = "ActivateDock Settings";
+"settings.tab.general" = "General";
+"settings.tab.plugins" = "Plugins";
+
+"settings.section.shortcut.title" = "Activation Shortcut";
+"settings.section.shortcut.subtitle" = "Press a key combination to summon ActivateDock from anywhere.";
+
+"settings.section.accessibility.title" = "Accessibility Permission";
+"settings.section.accessibility.subtitle" = "Used to restore minimized windows when you click an app icon. App switching still works without this permission.";
+
+"settings.section.four_finger_swipe.title" = "Four-finger swipe down";
+"settings.section.four_finger_swipe.subtitle" = "Experimental global trackpad trigger. Uses private MultitouchSupport APIs and requires Sandbox off.";
+
+"settings.section.language.title" = "Language";
+"settings.section.language.subtitle" = "Choose the display language for ActivateDock.";
+"settings.language.english" = "English";
+"settings.language.chinese" = "中文";
+
+"settings.plugins.header.title" = "Plugins";
+"settings.plugins.header.subtitle" = "Override variables declared by each installed plugin's info.plist. Values are stored locally and merged on top of the manifest's defaults at run time.";
+
+"plugins.empty" = "No plugins yet — tap the button above to import a .alfredworkflow / .zip file or a plugin folder.";
+"plugins.no_variables" = "This plugin declares no configurable variables.";
+"plugins.keyword_label" = "keyword: %@";
+
+/* Plugin import */
+"plugins.import.button" = "+ Import plugin";
+"plugins.import.hint" = ".alfredworkflow / .zip / plugin folder";
+"plugins.import.panel_message" = "Choose a .alfredworkflow / .zip file or a plugin folder";
+"plugins.import.panel_prompt" = "Import";
+
+"plugins.import.confirm.title" = "Confirm plugin import?";
+"plugins.import.confirm.body" = "Plugins may run scripts while you search or trigger actions. Only import plugins from sources you trust.\n\n%@";
+"plugins.import.confirm.import" = "Import";
+"plugins.import.confirm.cancel" = "Cancel";
+
+"plugins.import.replace.title" = "Plugin already installed";
+"plugins.import.replace.body" = "Plugin \"%@\" is already installed. Continuing will remove the old version and install the new one.";
+"plugins.import.replace.replace" = "Replace";
+
+"plugins.import.success.title" = "Imported %@";
+"plugins.import.failure.title" = "Import failed";
+"plugins.import.ok" = "OK";
+
+/* Plugin diagnostics */
+"plugins.diag.header.failures_one" = "%d plugin failed to load";
+"plugins.diag.header.failures_other" = "%d plugins failed to load";
+"plugins.diag.header.conflicts_one" = "%d keyword conflict";
+"plugins.diag.header.conflicts_other" = "%d keyword conflicts";
+"plugins.diag.header.prefix" = "Plugin issues — ";
+"plugins.diag.conflict.label" = "keyword \"%@\"";
+"plugins.diag.conflict.suffix" = "handles this keyword";
+
+/* Plugin importer errors */
+"plugins.error.unsupported_file" = "Only .alfredworkflow / .zip files or a plugin folder are supported.";
+"plugins.error.unzip_failed" = "Unzip failed: %@";
+"plugins.error.missing_manifest" = "info.plist not found — this doesn't look like an Alfred plugin.";
+"plugins.error.manifest_decode_failed" = "Failed to parse info.plist: %@";
+"plugins.error.already_exists" = "Plugin %@ already exists.";
+"plugins.error.copy_failed" = "Copy failed: %@";
+
+/* Status bar menu */
+"menu.settings" = "Settings…";
+"menu.help" = "Help";
+"menu.report_bug" = "Report Bug";
+"menu.check_for_update" = "Check for Update…";
+"menu.quit" = "Quit";
+
+/* Search */
+"search.placeholder" = "search";
+"search.hint.press_enter" = "press return to run";
+"search.hint.type_query" = "type your query";
+"search.hint.web_query" = "type what you want to search";
+
+/* Workflow errors */
+"workflow.error.internal" = "%@ · Internal error";
+"workflow.error.launch_failed" = "%@ · Launch failed";
+"workflow.error.permission_required" = "%@ · Permission required";
+"workflow.error.runtime" = "%@ · Runtime error";
+"workflow.error.decode_failed" = "%@ · Output parse failed";
+"workflow.error.unsupported_node" = "%@ · Unsupported node type";
+"workflow.error.missing_node" = "Node %@ not found";
+
+"workflow.permission.full_disk" = "System Settings → Privacy & Security → Full Disk Access → add ActivateDock, then try again.";
+"workflow.permission.automation" = "System Settings → Privacy & Security → Automation → grant ActivateDock access to the target app, then try again.";
+
+/* Update checker alerts */
+"update.uptodate.title" = "You're up to date";
+"update.uptodate.body" = "ActivateDock %@ is the latest version.";
+"update.available.title" = "New Version Available";
+"update.available.body" = "ActivateDock %@ is available — you have %@.";
+"update.no_release.title" = "No Releases Yet";
+"update.no_release.body" = "ActivateDock hasn't published any GitHub releases yet.";
+"update.rate_limited.title" = "GitHub Rate Limit Reached";
+"update.rate_limited.body" = "Too many update checks in a short period. Please try again in about an hour, or open the releases page manually.";
+"update.failed.title" = "Update Check Failed";
+
+"button.ok" = "OK";
+"button.download" = "Download";
+"button.later" = "Later";
+"button.open_releases" = "Open Releases Page";

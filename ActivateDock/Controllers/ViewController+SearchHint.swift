@@ -64,7 +64,7 @@ extension ViewController: NSWindowDelegate {
               let ep = WorkflowRegistry.shared.entrypoint(forKeyword: keyword),
               let node = graph.nodes[ep.nodeUID]
         else { return nil }
-        return node.nodeType == "input.keyword" ? "按回车执行" : "输入查询内容"
+        return node.nodeType == "input.keyword" ? L("search.hint.press_enter") : L("search.hint.type_query")
     }
 
     func windowWillReturnFieldEditor(_ sender: NSWindow, to client: Any?) -> Any? {

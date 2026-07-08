@@ -1,0 +1,102 @@
+/* Settings window */
+"settings.window.title" = "ActivateDock 设置";
+"settings.tab.general" = "通用";
+"settings.tab.plugins" = "插件";
+
+"settings.section.shortcut.title" = "唤起快捷键";
+"settings.section.shortcut.subtitle" = "按下一个组合键,任何时候都能召唤 ActivateDock。";
+
+"settings.section.accessibility.title" = "辅助功能权限";
+"settings.section.accessibility.subtitle" = "用于在你点击图标时还原最小化窗口。即使没授权,App 切换功能仍然可用。";
+
+"settings.section.four_finger_swipe.title" = "四指下滑";
+"settings.section.four_finger_swipe.subtitle" = "实验性全局触控板唤起手势。使用私有 MultitouchSupport API,需要关闭 Sandbox。";
+
+"settings.section.language.title" = "语言";
+"settings.section.language.subtitle" = "选择 ActivateDock 的显示语言。";
+"settings.language.english" = "English";
+"settings.language.chinese" = "中文";
+
+"settings.plugins.header.title" = "插件";
+"settings.plugins.header.subtitle" = "覆盖每个已安装插件 info.plist 中声明的变量。值保存在本地,运行时在清单默认值之上合并。";
+
+"plugins.empty" = "还没有插件,点上方按钮导入一个 .alfredworkflow / .zip 或插件目录。";
+"plugins.no_variables" = "该插件没有声明可配置变量。";
+"plugins.keyword_label" = "关键词:%@";
+
+/* Plugin import */
+"plugins.import.button" = "+ 导入插件";
+"plugins.import.hint" = ".alfredworkflow / .zip / 插件目录";
+"plugins.import.panel_message" = "选择 .alfredworkflow / .zip 文件或一个插件目录";
+"plugins.import.panel_prompt" = "导入";
+
+"plugins.import.confirm.title" = "确认导入插件?";
+"plugins.import.confirm.body" = "插件可能包含会在搜索或执行动作时运行的脚本。请只导入你信任来源的插件。\n\n%@";
+"plugins.import.confirm.import" = "导入";
+"plugins.import.confirm.cancel" = "取消";
+
+"plugins.import.replace.title" = "已存在同名插件";
+"plugins.import.replace.body" = "插件 \"%@\" 已经安装。继续会删除旧版本所有文件,然后装上新版本。";
+"plugins.import.replace.replace" = "替换";
+
+"plugins.import.success.title" = "已导入 %@";
+"plugins.import.failure.title" = "导入失败";
+"plugins.import.ok" = "好";
+
+/* Plugin diagnostics */
+"plugins.diag.header.failures_one" = "%d 个插件加载失败";
+"plugins.diag.header.failures_other" = "%d 个插件加载失败";
+"plugins.diag.header.conflicts_one" = "%d 个关键词冲突";
+"plugins.diag.header.conflicts_other" = "%d 个关键词冲突";
+"plugins.diag.header.prefix" = "插件问题 — ";
+"plugins.diag.conflict.label" = "关键词 \"%@\"";
+"plugins.diag.conflict.suffix" = "处理这个关键词";
+
+/* Plugin importer errors */
+"plugins.error.unsupported_file" = "只支持 .alfredworkflow / .zip 文件或一个插件目录。";
+"plugins.error.unzip_failed" = "解压失败:%@";
+"plugins.error.missing_manifest" = "找不到 info.plist —— 这不像是一个 Alfred 插件。";
+"plugins.error.manifest_decode_failed" = "info.plist 解析失败:%@";
+"plugins.error.already_exists" = "插件 %@ 已存在。";
+"plugins.error.copy_failed" = "拷贝失败:%@";
+
+/* Status bar menu */
+"menu.settings" = "设置…";
+"menu.help" = "帮助";
+"menu.report_bug" = "反馈问题";
+"menu.check_for_update" = "检查更新…";
+"menu.quit" = "退出";
+
+/* Search */
+"search.placeholder" = "搜索";
+"search.hint.press_enter" = "按回车执行";
+"search.hint.type_query" = "输入查询内容";
+"search.hint.web_query" = "输入你要搜索的内容";
+
+/* Workflow errors */
+"workflow.error.internal" = "%@ · 内部错误";
+"workflow.error.launch_failed" = "%@ · 启动失败";
+"workflow.error.permission_required" = "%@ · 需要权限";
+"workflow.error.runtime" = "%@ · 运行错误";
+"workflow.error.decode_failed" = "%@ · 输出解析失败";
+"workflow.error.unsupported_node" = "%@ · 不支持的节点类型";
+"workflow.error.missing_node" = "找不到节点 %@";
+
+"workflow.permission.full_disk" = "系统设置 → 隐私与安全性 → 完全磁盘访问权限 → 添加 ActivateDock,然后重试。";
+"workflow.permission.automation" = "系统设置 → 隐私与安全性 → 自动化 → 给 ActivateDock 勾选目标 app,然后重试。";
+
+/* Update checker alerts */
+"update.uptodate.title" = "已是最新版本";
+"update.uptodate.body" = "ActivateDock %@ 已是最新版本。";
+"update.available.title" = "发现新版本";
+"update.available.body" = "ActivateDock %@ 已发布 —— 当前版本 %@。";
+"update.no_release.title" = "暂无发布版本";
+"update.no_release.body" = "ActivateDock 还没有发布任何 GitHub Releases。";
+"update.rate_limited.title" = "GitHub 触发限流";
+"update.rate_limited.body" = "短时间内检查更新次数过多,请约一小时后再试,或手动打开 Releases 页面。";
+"update.failed.title" = "检查更新失败";
+
+"button.ok" = "好";
+"button.download" = "下载";
+"button.later" = "稍后";
+"button.open_releases" = "打开 Releases 页面";

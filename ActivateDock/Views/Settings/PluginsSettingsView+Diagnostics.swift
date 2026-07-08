@@ -47,12 +47,14 @@ extension PluginsSettingsView {
     private func makeDiagnosticsHeader(failureCount: Int, conflictCount: Int) -> NSView {
         var parts: [String] = []
         if failureCount > 0 {
-            parts.append("\(failureCount) plugin\(failureCount == 1 ? "" : "s") failed to load")
+            let key = failureCount == 1 ? "plugins.diag.header.failures_one" : "plugins.diag.header.failures_other"
+            parts.append(L(key, failureCount))
         }
         if conflictCount > 0 {
-            parts.append("\(conflictCount) keyword conflict\(conflictCount == 1 ? "" : "s")")
+            let key = conflictCount == 1 ? "plugins.diag.header.conflicts_one" : "plugins.diag.header.conflicts_other"
+            parts.append(L(key, conflictCount))
         }
-        let label = NSTextField(labelWithString: "Plugin issues — " + parts.joined(separator: ", "))
+        let label = NSTextField(labelWithString: L("plugins.diag.header.prefix") + parts.joined(separator: ", "))
         label.font = .boldSystemFont(ofSize: 12)
         label.textColor = .systemOrange
         return label
@@ -76,7 +78,7 @@ extension PluginsSettingsView {
     }
 
     private func makeConflictRow(_ conflict: PluginKeywordConflict) -> NSView {
-        let label = NSTextField(labelWithString: "keyword \"\(conflict.keyword)\"")
+        let label = NSTextField(labelWithString: L("plugins.diag.conflict.label", conflict.keyword))
         label.font = .systemFont(ofSize: 11, weight: .medium)
         label.textColor = .labelColor
 
@@ -89,7 +91,7 @@ extension PluginsSettingsView {
         popup.target = self
         popup.action = #selector(handleKeywordConflictChoice(_:))
 
-        let suffix = NSTextField(labelWithString: "handles this keyword")
+        let suffix = NSTextField(labelWithString: L("plugins.diag.conflict.suffix"))
         suffix.font = .systemFont(ofSize: 11)
         suffix.textColor = .secondaryLabelColor
 

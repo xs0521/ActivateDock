@@ -65,7 +65,7 @@ extension ViewController {
     }
 
     func setupSearch() {
-        searchField.placeholderString = "search"
+        searchField.placeholderString = L("search.placeholder")
         searchField.font = .systemFont(ofSize: 22)
         searchField.sendsWholeSearchString = true
         searchField.sendsSearchStringImmediately = false

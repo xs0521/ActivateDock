@@ -17,11 +17,11 @@ extension PluginsSettingsView {
     func makeImportRow() -> NSView {
         let button = NSButton()
         button.bezelStyle = .rounded
-        button.title = "+ 导入插件"
+        button.title = L("plugins.import.button")
         button.target = self
         button.action = #selector(handleImportTapped)
 
-        let hint = NSTextField(labelWithString: ".alfredworkflow / .zip / 插件目录")
+        let hint = NSTextField(labelWithString: L("plugins.import.hint"))
         hint.font = .systemFont(ofSize: 11)
         hint.textColor = .secondaryLabelColor
 
@@ -37,8 +37,8 @@ extension PluginsSettingsView {
         panel.canChooseFiles = true
         panel.canChooseDirectories = true
         panel.allowsMultipleSelection = false
-        panel.message = "选择 .alfredworkflow / .zip 文件或一个插件目录"
-        panel.prompt = "导入"
+        panel.message = L("plugins.import.panel_message")
+        panel.prompt = L("plugins.import.panel_prompt")
         var types: [UTType] = [.zip, .folder]
         if let alfred = UTType(filenameExtension: "alfredworkflow") {
             types.insert(alfred, at: 0)
@@ -65,7 +65,7 @@ extension PluginsSettingsView {
             let result = try PluginImporter.install(from: source, replaceExisting: replaceExisting)
             WorkflowRegistry.shared.reload()
             presentInfo(
-                title: "已导入 \(result.displayName)",
+                title: L("plugins.import.success.title", result.displayName),
                 detail: result.installedAt.path
             )
         } catch let error as PluginImporter.ImportError {
@@ -85,15 +85,11 @@ extension PluginsSettingsView {
 
     private func confirmImport(source: URL, completion: @escaping (Bool) -> Void) {
         let alert = NSAlert()
-        alert.messageText = "确认导入插件?"
-        alert.informativeText = """
-        插件可能包含会在搜索或执行动作时运行的脚本。请只导入你信任来源的插件。
-
-        \(source.lastPathComponent)
-        """
+        alert.messageText = L("plugins.import.confirm.title")
+        alert.informativeText = L("plugins.import.confirm.body", source.lastPathComponent)
         alert.alertStyle = .warning
-        alert.addButton(withTitle: "导入")
-        alert.addButton(withTitle: "取消")
+        alert.addButton(withTitle: L("plugins.import.confirm.import"))
+        alert.addButton(withTitle: L("plugins.import.confirm.cancel"))
         let handler: (NSApplication.ModalResponse) -> Void = { resp in
             completion(resp == .alertFirstButtonReturn)
         }
@@ -106,11 +102,11 @@ extension PluginsSettingsView {
 
     private func confirmReplace(bundleId: String, completion: @escaping (Bool) -> Void) {
         let alert = NSAlert()
-        alert.messageText = "已存在同名插件"
-        alert.informativeText = "插件 \"\(bundleId)\" 已经安装。继续会删除旧版本所有文件,然后装上新版本。"
+        alert.messageText = L("plugins.import.replace.title")
+        alert.informativeText = L("plugins.import.replace.body", bundleId)
         alert.alertStyle = .warning
-        alert.addButton(withTitle: "替换")
-        alert.addButton(withTitle: "取消")
+        alert.addButton(withTitle: L("plugins.import.replace.replace"))
+        alert.addButton(withTitle: L("plugins.import.confirm.cancel"))
         let handler: (NSApplication.ModalResponse) -> Void = { resp in
             completion(resp == .alertFirstButtonReturn)
         }
@@ -126,7 +122,7 @@ extension PluginsSettingsView {
     }
 
     private func presentError(_ detail: String) {
-        presentAlert(title: "导入失败", detail: detail, style: .warning)
+        presentAlert(title: L("plugins.import.failure.title"), detail: detail, style: .warning)
     }
 
     private func presentAlert(title: String, detail: String, style: NSAlert.Style) {
@@ -134,7 +130,7 @@ extension PluginsSettingsView {
         alert.messageText = title
         alert.informativeText = detail
         alert.alertStyle = style
-        alert.addButton(withTitle: "好")
+        alert.addButton(withTitle: L("plugins.import.ok"))
         if let window {
             alert.beginSheetModal(for: window, completionHandler: nil)
         } else {

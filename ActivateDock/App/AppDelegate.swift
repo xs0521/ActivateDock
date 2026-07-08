@@ -93,43 +93,43 @@ class AppDelegate: NSObject, NSApplicationDelegate {
 
             switch result {
             case .upToDate(let current):
-                alert.title = "You're up to date"
-                alert.message = "ActivateDock \(current) is the latest version."
-                alert.primaryButton = "OK"
+                alert.title = L("update.uptodate.title")
+                alert.message = L("update.uptodate.body", current)
+                alert.primaryButton = L("button.ok")
                 alert.runModal()
 
             case .available(let latest, let current, let url):
-                alert.title = "New Version Available"
-                alert.message = "ActivateDock \(latest) is available — you have \(current)."
-                alert.primaryButton = "Download"
-                alert.secondaryButton = "Later"
+                alert.title = L("update.available.title")
+                alert.message = L("update.available.body", latest, current)
+                alert.primaryButton = L("button.download")
+                alert.secondaryButton = L("button.later")
                 if alert.runModal() == .primary {
                     NSWorkspace.shared.open(url)
                 }
 
             case .noReleaseYet:
-                alert.title = "No Releases Yet"
-                alert.message = "ActivateDock hasn't published any GitHub releases yet."
-                alert.primaryButton = "Open Releases Page"
-                alert.secondaryButton = "OK"
+                alert.title = L("update.no_release.title")
+                alert.message = L("update.no_release.body")
+                alert.primaryButton = L("button.open_releases")
+                alert.secondaryButton = L("button.ok")
                 if alert.runModal() == .primary {
                     NSWorkspace.shared.open(releasesURL)
                 }
 
             case .rateLimited:
-                alert.title = "GitHub Rate Limit Reached"
-                alert.message = "Too many update checks in a short period. Please try again in about an hour, or open the releases page manually."
-                alert.primaryButton = "Open Releases Page"
-                alert.secondaryButton = "OK"
+                alert.title = L("update.rate_limited.title")
+                alert.message = L("update.rate_limited.body")
+                alert.primaryButton = L("button.open_releases")
+                alert.secondaryButton = L("button.ok")
                 if alert.runModal() == .primary {
                     NSWorkspace.shared.open(releasesURL)
                 }
 
             case .failed(let error):
-                alert.title = "Update Check Failed"
+                alert.title = L("update.failed.title")
                 alert.message = error.localizedDescription
-                alert.primaryButton = "Open Releases Page"
-                alert.secondaryButton = "OK"
+                alert.primaryButton = L("button.open_releases")
+                alert.secondaryButton = L("button.ok")
                 if alert.runModal() == .primary {
                     NSWorkspace.shared.open(releasesURL)
                 }

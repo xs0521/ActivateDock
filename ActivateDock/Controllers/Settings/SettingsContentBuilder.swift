@@ -9,39 +9,48 @@ enum SettingsContentBuilder {
     static func build(recorder: KeyRecorderView,
                       accessibilitySwitch: StateSwitch,
                       fourFingerSwipeSwitch: StateSwitch,
+                      languageControl: NSSegmentedControl,
                       pluginsView: PluginsSettingsView) -> NSView {
         let general = buildGeneralPage(
             recorder: recorder,
             accessibilitySwitch: accessibilitySwitch,
-            fourFingerSwipeSwitch: fourFingerSwipeSwitch
+            fourFingerSwipeSwitch: fourFingerSwipeSwitch,
+            languageControl: languageControl
         )
         let plugins = buildPluginsPage(pluginsView: pluginsView)
         return SettingsTabContainer(pages: [
-            .init(title: "通用", view: general),
-            .init(title: "Plugins", view: plugins)
+            .init(title: L("settings.tab.general"), view: general),
+            .init(title: L("settings.tab.plugins"), view: plugins)
         ])
     }
 
     private static func buildGeneralPage(recorder: KeyRecorderView,
                                          accessibilitySwitch: StateSwitch,
-                                         fourFingerSwipeSwitch: StateSwitch) -> NSView {
+                                         fourFingerSwipeSwitch: StateSwitch,
+                                         languageControl: NSSegmentedControl) -> NSView {
         let stack = makePageStack()
         stack.addArrangedSubview(makeSection(
-            title: "Activation Shortcut",
-            subtitle: "Press a key combination to summon ActivateDock from anywhere.",
+            title: L("settings.section.shortcut.title"),
+            subtitle: L("settings.section.shortcut.subtitle"),
             trailing: recorder
         ))
         stack.addArrangedSubview(makeDivider())
         stack.addArrangedSubview(makeSection(
-            title: "Four-finger swipe down",
-            subtitle: "Experimental global trackpad trigger. Uses private MultitouchSupport APIs and requires Sandbox off.",
+            title: L("settings.section.accessibility.title"),
+            subtitle: L("settings.section.accessibility.subtitle"),
+            trailing: accessibilitySwitch
+        ))
+        stack.addArrangedSubview(makeDivider())
+        stack.addArrangedSubview(makeSection(
+            title: L("settings.section.four_finger_swipe.title"),
+            subtitle: L("settings.section.four_finger_swipe.subtitle"),
             trailing: fourFingerSwipeSwitch
         ))
         stack.addArrangedSubview(makeDivider())
         stack.addArrangedSubview(makeSection(
-            title: "Accessibility Permission",
-            subtitle: "Used to restore minimized windows when you click an app icon. App switching still works without this permission.",
-            trailing: accessibilitySwitch
+            title: L("settings.section.language.title"),
+            subtitle: L("settings.section.language.subtitle"),
+            trailing: languageControl
         ))
         return wrapInScroll(stack)
     }
@@ -141,8 +150,8 @@ enum SettingsContentBuilder {
     }
 
     private static func makePluginsHeader() -> NSView {
-        let title = makeTitle("Plugins")
-        let subtitle = makeSubtitle("Override variables declared by each installed plugin's info.plist. Values are stored locally and merged on top of the manifest's defaults at run time.")
+        let title = makeTitle(L("settings.plugins.header.title"))
+        let subtitle = makeSubtitle(L("settings.plugins.header.subtitle"))
         let stack = NSStackView(views: [title, subtitle])
         stack.orientation = .vertical
         stack.alignment = .leading

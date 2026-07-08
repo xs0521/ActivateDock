@@ -17,7 +17,7 @@ extension ViewController {
                    query: String) {
         guard let node = graph.nodes[entrypoint.nodeUID] else {
             let msg = "entry node \(entrypoint.nodeUID) not found"
-            searchResults = [.error(title: "\(graph.name) · 内部错误", detail: msg)]
+            searchResults = [.error(title: L("workflow.error.internal", graph.name), detail: msg)]
             searchResultsTable.reloadData()
             return
         }
@@ -58,22 +58,22 @@ extension ViewController {
                                           graphName: String) -> (title: String, detail: String) {
         switch err.kind {
         case .launchFailed(let e):
-            return ("\(graphName) · 启动失败", e.localizedDescription)
+            return (L("workflow.error.launch_failed", graphName), e.localizedDescription)
         case .nodeFailed(let stderr, let code):
             if let hint = permissionHint(stderr: stderr) {
-                return ("\(graphName) · 需要权限", hint)
+                return (L("workflow.error.permission_required", graphName), hint)
             }
             let firstLine = stderr.split(whereSeparator: \.isNewline).first.map(String.init) ?? ""
             let trimmed = firstLine.trimmingCharacters(in: .whitespaces)
             let detail = trimmed.isEmpty ? "exit code \(code)" : "exit \(code): \(trimmed.prefix(180))"
-            return ("\(graphName) · 运行错误", detail)
+            return (L("workflow.error.runtime", graphName), detail)
         case .decodeFailed(let raw, _):
             let snippet = raw.trimmingCharacters(in: .whitespacesAndNewlines).prefix(180)
-            return ("\(graphName) · 输出解析失败", String(snippet))
+            return (L("workflow.error.decode_failed", graphName), String(snippet))
         case .missingNode(let uid):
-            return ("\(graphName) · 内部错误", "找不到节点 \(uid)")
+            return (L("workflow.error.internal", graphName), L("workflow.error.missing_node", uid))
         case .unsupportedNodeType(let type):
-            return ("\(graphName) · 不支持的节点类型", type)
+            return (L("workflow.error.unsupported_node", graphName), type)
         }
     }
 
@@ -81,13 +81,13 @@ extension ViewController {
         let lower = stderr.lowercased()
         if lower.contains("authorization denied") ||
            lower.contains("operation not permitted") {
-            return "系统设置 → 隐私与安全性 → 完全磁盘访问权限 → 添加 ActivateDock,然后重试。"
+            return L("workflow.permission.full_disk")
         }
         if lower.contains("not authorized to send apple events") ||
            lower.contains("not allowed to send apple events") ||
            lower.contains("error: -1743") ||
            lower.contains("(-1743)") {
-            return "系统设置 → 隐私与安全性 → 自动化 → 给 ActivateDock 勾选目标 app,然后重试。"
+            return L("workflow.permission.automation")
         }
         return nil
     }

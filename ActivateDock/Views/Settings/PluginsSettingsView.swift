@@ -61,7 +61,7 @@ final class PluginsSettingsView: NSView, NSTextFieldDelegate {
 
         let groups = pluginGroups()
         if groups.isEmpty {
-            stack.addArrangedSubview(makeMutedLabel("还没有插件,点上方按钮导入一个 .alfredworkflow / .zip 或插件目录。"))
+            stack.addArrangedSubview(makeMutedLabel(L("plugins.empty")))
             return
         }
         for (i, group) in groups.enumerated() {
@@ -105,14 +105,14 @@ final class PluginsSettingsView: NSView, NSTextFieldDelegate {
         body.alignment = .leading
         body.spacing = 6
 
-        body.addArrangedSubview(makeMutedLabel("keyword: " + group.keywords.joined(separator: ", ")))
+        body.addArrangedSubview(makeMutedLabel(L("plugins.keyword_label", group.keywords.joined(separator: ", "))))
 
         if let desc = group.description, !desc.isEmpty {
             body.addArrangedSubview(makeMutedLabel(desc))
         }
 
         if group.variables.isEmpty {
-            body.addArrangedSubview(makeMutedLabel("This plugin declares no configurable variables."))
+            body.addArrangedSubview(makeMutedLabel(L("plugins.no_variables")))
         } else {
             for key in group.variables.keys.sorted() {
                 body.addArrangedSubview(makeVariableRow(
