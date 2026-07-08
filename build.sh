@@ -35,6 +35,15 @@ done
 readonly APP_BUILT="$BUILD_DIR/Build/Products/$CONFIG/$SCHEME.app"
 readonly APP_DIST="$DIST_DIR/$SCHEME.app"
 
+XCODEBUILD_OVERRIDES=()
+if [[ "${ACTIVATEDOCK_DISABLE_CODE_SIGNING:-}" == "1" ]]; then
+    XCODEBUILD_OVERRIDES+=(
+        CODE_SIGNING_ALLOWED=NO
+        CODE_SIGNING_REQUIRED=NO
+        CODE_SIGN_IDENTITY=-
+    )
+fi
+
 stop_running_app() {
     if ! pgrep -x "$SCHEME" >/dev/null; then
         return
@@ -63,7 +72,8 @@ if ! xcodebuild \
     -configuration "$CONFIG" \
     -derivedDataPath "$BUILD_DIR" \
     -destination 'platform=macOS' \
-    build > "$LOG" 2>&1; then
+    build \
+    "${XCODEBUILD_OVERRIDES[@]}" > "$LOG" 2>&1; then
     echo "[build] FAILED. Tail of $LOG:"
     tail -40 "$LOG"
     exit 1
