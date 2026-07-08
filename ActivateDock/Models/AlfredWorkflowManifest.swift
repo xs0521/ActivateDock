@@ -83,6 +83,45 @@ struct WorkflowObjectConfig: Decodable {
     // input.listfilter: Alfred stores items as a JSON-encoded string, not a
     // native plist array. Expand {var:NAME} in this string, then JSON-decode.
     let items: String?
+
+    enum CodingKeys: String, CodingKey {
+        case keyword, script, scriptargtype, title, subtext, runningsubtext
+        case type, url, text, argument, passthroughargument, items
+    }
+
+    init(from decoder: Decoder) throws {
+        let c = try decoder.container(keyedBy: CodingKeys.self)
+        keyword = c.decodeStringIfPresentLossy(forKey: .keyword)
+        script = c.decodeStringIfPresentLossy(forKey: .script)
+        scriptargtype = c.decodeIntIfPresentLossy(forKey: .scriptargtype)
+        title = c.decodeStringIfPresentLossy(forKey: .title)
+        subtext = c.decodeStringIfPresentLossy(forKey: .subtext)
+        runningsubtext = c.decodeStringIfPresentLossy(forKey: .runningsubtext)
+        type = c.decodeIntIfPresentLossy(forKey: .type)
+        url = c.decodeStringIfPresentLossy(forKey: .url)
+        text = c.decodeStringIfPresentLossy(forKey: .text)
+        argument = c.decodeStringIfPresentLossy(forKey: .argument)
+        passthroughargument = c.decodeBoolIfPresentLossy(forKey: .passthroughargument)
+        items = c.decodeStringIfPresentLossy(forKey: .items)
+    }
+}
+
+private extension KeyedDecodingContainer {
+    func decodeStringIfPresentLossy(forKey key: Key) -> String? {
+        if let value = try? decodeIfPresent(String.self, forKey: key) { return value }
+        return nil
+    }
+
+    func decodeIntIfPresentLossy(forKey key: Key) -> Int? {
+        if let value = try? decodeIfPresent(Int.self, forKey: key) { return value }
+        if let value = try? decodeIfPresent(Double.self, forKey: key) { return Int(value) }
+        return nil
+    }
+
+    func decodeBoolIfPresentLossy(forKey key: Key) -> Bool? {
+        if let value = try? decodeIfPresent(Bool.self, forKey: key) { return value }
+        return nil
+    }
 }
 
 // One static item decoded from the JSON string in an input.listfilter config.
