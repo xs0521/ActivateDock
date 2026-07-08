@@ -35,6 +35,12 @@ Build and install the app into `/Applications`:
 
 The script builds the Release app, writes a distributable copy into `dist/`, zips it, stops a running `ActivateDock` process if needed, and replaces `/Applications/ActivateDock.app`.
 
+Before opening the installed app, remove macOS's quarantine attribute:
+
+```bash
+sudo xattr -r -d com.apple.quarantine /Applications/ActivateDock.app
+```
+
 For local development without installing:
 
 ```bash
