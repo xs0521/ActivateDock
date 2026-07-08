@@ -21,6 +21,10 @@ ActivateDock is a macOS launcher for quickly switching running apps, opening ins
 
 ![System Settings command](img/Xnip2026-07-08_13-45-45.webp)
 
+![Settings general page](img/Xnip2026-07-08_14-02-45.png)
+
+![Settings plugins page](img/Xnip2026-07-08_14-02-54.png)
+
 All README image assets live in [`img/`](img/).
 
 ## Install
