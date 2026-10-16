@@ -73,6 +73,7 @@ final class PluginsSettingsView: NSView, NSTextFieldDelegate {
     private struct PluginGroup {
         let bundleId: String
         let name: String
+        let directory: URL
         let description: String?
         let keywords: [String]
         let variables: [String: String]
@@ -83,6 +84,7 @@ final class PluginsSettingsView: NSView, NSTextFieldDelegate {
             PluginGroup(
                 bundleId: graph.bundleId,
                 name: graph.name,
+                directory: graph.pluginDirectory,
                 description: graph.description,
                 keywords: graph.entrypoints.map(\.keyword).sorted(),
                 variables: graph.variables
@@ -99,6 +101,7 @@ final class PluginsSettingsView: NSView, NSTextFieldDelegate {
         let title = NSTextField(labelWithString: group.name)
         title.font = .boldSystemFont(ofSize: 13)
         header.addArrangedSubview(title)
+        header.addArrangedSubview(makeDeleteButton(directory: group.directory))
 
         let body = NSStackView()
         body.orientation = .vertical

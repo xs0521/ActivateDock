@@ -46,6 +46,12 @@
 "plugins.import.failure.title" = "导入失败";
 "plugins.import.ok" = "好";
 
+"plugins.delete.button" = "删除";
+"plugins.delete.confirm.title" = "删除插件“%@”？";
+"plugins.delete.confirm.body" = "这将永久删除已安装的插件文件及保存的配置（包括凭据）。之后可以重新导入该插件。";
+"plugins.delete.failure.title" = "删除失败";
+"plugins.delete.error.invalid_directory" = "所选目录不在插件安装目录内。";
+
 /* Plugin diagnostics */
 "plugins.diag.header.failures_one" = "%d 个插件加载失败";
 "plugins.diag.header.failures_other" = "%d 个插件加载失败";

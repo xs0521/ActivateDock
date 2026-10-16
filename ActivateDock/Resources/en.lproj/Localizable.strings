@@ -46,6 +46,12 @@
 "plugins.import.failure.title" = "Import failed";
 "plugins.import.ok" = "OK";
 
+"plugins.delete.button" = "Delete";
+"plugins.delete.confirm.title" = "Delete plugin \"%@\"?";
+"plugins.delete.confirm.body" = "This will permanently delete the installed plugin files and saved settings, including credentials. You can import the plugin again later.";
+"plugins.delete.failure.title" = "Delete failed";
+"plugins.delete.error.invalid_directory" = "The selected directory is outside the plugin installation folder.";
+
 /* Plugin diagnostics */
 "plugins.diag.header.failures_one" = "%d plugin failed to load";
 "plugins.diag.header.failures_other" = "%d plugins failed to load";

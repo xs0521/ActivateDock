@@ -32,6 +32,11 @@ enum PluginSecretStore {
         save(values)
     }
 
+    static func deleteAll(for bundleId: String) {
+        let prefix = "\(bundleId)::"
+        save(encryptedValues().filter { !$0.key.hasPrefix(prefix) })
+    }
+
     private static func encryptedValues() -> [String: String] {
         guard let data = UserDefaults.standard.data(forKey: valuesKey),
               let decoded = try? JSONDecoder().decode([String: String].self, from: data) else {

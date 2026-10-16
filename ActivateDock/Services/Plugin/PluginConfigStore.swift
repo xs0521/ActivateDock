@@ -68,6 +68,14 @@ final class PluginConfigStore {
         return merged
     }
 
+    func removeOverrides(for bundleId: String) {
+        nonSecretOverrides.removeValue(forKey: bundleId)
+        keywordOwnerOverrides = keywordOwnerOverrides.filter { $0.value != bundleId }
+        PluginSecretStore.deleteAll(for: bundleId)
+        save()
+        saveKeywordOwners()
+    }
+
     func preferredKeywordOwner(for keyword: String) -> String? {
         keywordOwnerOverrides[keyword.lowercased()]
     }
