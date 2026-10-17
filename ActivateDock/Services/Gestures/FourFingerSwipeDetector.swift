@@ -4,7 +4,6 @@
 //
 
 import Foundation
-import OpenMultitouchSupport
 
 struct FourFingerSwipeDetector {
     private struct Point {
@@ -24,9 +23,9 @@ struct FourFingerSwipeDetector {
     private let minVerticalTravel: Float = 0.10
     private let maxHorizontalDrift: Float = 0.22
 
-    mutating func consume(_ touches: [OMSTouchData]) -> Bool {
-        let now = ProcessInfo.processInfo.systemUptime
-        let active = touches.filter(Self.isActive)
+    mutating func consume(_ touches: [ADTouch],
+                          now: TimeInterval = ProcessInfo.processInfo.systemUptime) -> Bool {
+        let active = touches.filter { Self.isActive($0) }
         guard active.count >= minTouches else {
             if startPoint != nil,
                active.count >= minTrackingTouches,
@@ -80,20 +79,20 @@ struct FourFingerSwipeDetector {
         startTime = time
     }
 
-    private static func isActive(_ touch: OMSTouchData) -> Bool {
+    private static func isActive(_ touch: ADTouch) -> Bool {
         switch touch.state {
-        case .starting, .making, .touching, .breaking:
+        case 1, 3, 4, 5:
             return true
-        case .notTouching, .hovering, .lingering, .leaving:
+        default:
             return false
         }
     }
 
-    private static func centroid(of touches: [OMSTouchData]) -> Point {
+    private static func centroid(of touches: [ADTouch]) -> Point {
         let total = touches.reduce(Point(x: 0, y: 0)) { partial, touch in
             Point(
-                x: partial.x + touch.position.x,
-                y: partial.y + touch.position.y
+                x: partial.x + touch.x,
+                y: partial.y + touch.y
             )
         }
         let count = Float(touches.count)

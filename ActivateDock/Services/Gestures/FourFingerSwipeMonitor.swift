@@ -4,7 +4,6 @@
 //
 
 import Foundation
-import OpenMultitouchSupport
 
 @MainActor
 final class FourFingerSwipeMonitor {
@@ -12,11 +11,18 @@ final class FourFingerSwipeMonitor {
 
     var onSwipeDown: (() -> Void)?
 
-    private let manager = OMSManager.shared
-    private var detector = FourFingerSwipeDetector()
-    private var task: Task<Void, Never>?
+    private let reader = MultitouchReader()
+    private var detectors: [UInt: FourFingerSwipeDetector] = [:]
+    private var isListening = false
 
-    private init() {}
+    private init() {
+        reader.onFrame = { [weak self] device, touches in
+            self?.handle(touches, from: device)
+        }
+        reader.onDevicesChanged = { [weak self] in
+            self?.detectors.removeAll()
+        }
+    }
 
     func startIfEnabled() {
         FourFingerSwipePreferences.isEnabled ? start() : stop()
@@ -28,33 +34,22 @@ final class FourFingerSwipeMonitor {
     }
 
     func start() {
-        guard task == nil else { return }
-        guard manager.startListening() else {
-            NSLog("[FourFingerSwipe] failed to start listener")
-            return
-        }
-
-        let stream = manager.touchDataStream
-        task = Task { [weak self] in
-            for await touches in stream {
-                guard !Task.isCancelled else { break }
-                await self?.handle(touches)
-            }
-        }
-        NSLog("[FourFingerSwipe] listener started")
+        guard !isListening else { return }
+        isListening = reader.start()
+        NSLog("[FourFingerSwipe] listener %@", isListening ? "started" : "failed to start")
     }
 
     func stop() {
-        guard task != nil || manager.isListening else { return }
-        task?.cancel()
-        task = nil
-        _ = manager.stopListening()
-        detector.reset()
+        guard isListening else { return }
+        reader.stop()
+        isListening = false
+        detectors.removeAll()
         NSLog("[FourFingerSwipe] listener stopped")
     }
 
-    private func handle(_ touches: [OMSTouchData]) {
-        if detector.consume(touches) {
+    private func handle(_ touches: [ADTouch], from device: UInt) {
+        // Frames from another trackpad must never reset or complete this swipe.
+        if detectors[device, default: FourFingerSwipeDetector()].consume(touches) {
             onSwipeDown?()
         }
     }
